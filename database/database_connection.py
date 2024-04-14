@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException
 from utils import constant_messages
+from utils.logger import logger
 import os
 
 host = os.getenv('host')
@@ -28,7 +29,7 @@ def try_session_commit(session, delete=False):
             session.commit()
             return
         except IntegrityError as e:
-            print(e._message())
+            logger.error(print(e._message()))
             session.rollback()
             raise HTTPException(status_code=409,
                                 detail={
@@ -42,7 +43,7 @@ def try_session_commit(session, delete=False):
             session.commit()
             return
         except IntegrityError as e:
-            print(e._message())
+            logger.error(e._message())
             session.rollback()
             raise HTTPException(status_code=409,
                                 detail={

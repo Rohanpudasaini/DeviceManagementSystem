@@ -48,6 +48,7 @@ class MaintainanceHistory(Base):
         requested_by = User.from_id(requested_by_user_id)
         current_owner = User.from_id(current_user_id)
         if not requested_by and current_owner and device_to_repair:
+            logger.error(f'Can\'t find user with id {requested_by_user_id} or {current_user_id} or the device with id {device_to_repair_id} found')
             raise HTTPException(
                 status_code=404,
                 detail={
@@ -67,6 +68,7 @@ class MaintainanceHistory(Base):
         device_to_repair.available = False
         session.add(device_to_repair)
         try_session_commit(session)
+        logger.info("Sucessfully given device with id {device_to_repair_id} to repair")
         return 'Sucessfully Given For Repair'
 
 
@@ -91,13 +93,8 @@ class User(Base):
     role_id = relationship('Role', back_populates='user_id',
                            secondary='users_roles', lazy='dynamic')
     default_password: Mapped[bool] = mapped_column(default=True)
-    # device_id:Mapped[int] = mapped_column(ForeignKey('device.id'), nullable=True)
     devices = relationship("Device", back_populates='user')
-    # sent_for_repair = relationship(
-    # 'MaintainanceHistory', back_populates='repair_requested')
-    # reported_device = relationship(
-    # 'MaintainanceHistory', back_populates='reported_by')
-    # record = relationship('DeviceRequestRecord', back_populates='user')
+
 
     @hybrid_property
     def full_name(self):
@@ -120,6 +117,7 @@ class User(Base):
     def change_password(cls,email,**kwargs):
         user_to_update = cls.from_email(email)
         if auth.verify_password(kwargs['new_password'], user_to_update.password):
+            logger.warning("Same password as old password")
             raise HTTPException(
                 status_code= 409,
                 detail={
@@ -132,6 +130,7 @@ class User(Base):
             user_to_update.default_password = False
             session.add(user_to_update)
             try_session_commit(session)
+            logger.info('Password Changed Sucesfully')
             return "Password Changed Sucesfully, Enjoy your account"
 
     @classmethod
@@ -190,6 +189,7 @@ class User(Base):
         if is_valid:
             access_token, refresh_token = auth.generate_JWT(email=user_object.email)
             if not user_object.default_password:
+                logger.info("Login Sucessfull")
                 return{
                     'access_token': access_token,
                     'refresh_token': refresh_token,
@@ -198,7 +198,9 @@ class User(Base):
                     'role': user_object.role_id.all()
                 }
             kwargs['token'] = access_token
+            logger.warning("Default password, redirection to change password")
             return RedirectResponse('/change_password')
+        logger.error("Invalid Credentials")
         raise HTTPException(
             status_code=401,
             detail= 'Invalid Credentials'
@@ -233,8 +235,10 @@ class DeviceRequestRecord(Base):
     
     @classmethod
     def allot_to_user(cls, user_id, device_id):
+        logger.info(f"Trying to allot a device with device id {device_id} to user with userid {user_id}")
         device_to_allot = Device.from_id(device_id)
         if not device_to_allot:
+            logger.error(f"Can't find the device with deviceid {device_id}")
             raise HTTPException(
                 status_code=404,
                 detail={
@@ -246,6 +250,7 @@ class DeviceRequestRecord(Base):
             )
         requested_user = User.from_id(user_id)
         if not requested_user:
+            logger.error(f"Can't find the user with user id {user_id}")
             raise HTTPException(
                 status_code=404,
                 detail={
@@ -258,6 +263,7 @@ class DeviceRequestRecord(Base):
         if not device_to_allot.deleted:
             if device_to_allot.available:
                 if device_to_allot.status.value != 'added':
+                    logger.error("The device with device id {device_id} is not published")
                     raise HTTPException(
                         status_code=404,
                         detail={
@@ -279,7 +285,9 @@ class DeviceRequestRecord(Base):
                 )
                 session.add(add_record)
                 try_session_commit(session)
+                logger.info("Allocation sucessfull")
                 return "sucessfully alloted device"
+            logger.error("The device is no longer available")
             raise HTTPException(
                 status_code=409,
                 detail={
@@ -289,6 +297,7 @@ class DeviceRequestRecord(Base):
                     }
                 }
             )
+        logger.error("Device is already deleted")
         raise HTTPException(
                 status_code=404,
                 detail={
@@ -301,8 +310,10 @@ class DeviceRequestRecord(Base):
 
     @classmethod
     def return_device(cls, user_id, device_id):
+        logger.info(f"Trying to return device with id {device_id} by user with id {user_id}")
         device_to_return = Device.from_id(device_id)
         if not device_to_return:
+            logger.error("Device not found")
             raise HTTPException(
                 status_code=404,
                 detail={
@@ -314,6 +325,7 @@ class DeviceRequestRecord(Base):
             )
         returned_user = User.from_id(user_id)
         if not returned_user:
+            logger.error("User not found")
             raise HTTPException(
                 status_code=404,
                 detail={
@@ -332,7 +344,9 @@ class DeviceRequestRecord(Base):
             record_to_update.returned_date= datetime.datetime.now(tz=datetime.UTC)
             session.add(record_to_update)
             try_session_commit(session)
+            logger.info("Device Returned Sucessfully")
             return 'Device Returned Sucessfully'
+        logger.error("The user have already returned the device")
         raise HTTPException(
             status_code=404,
             detail={
@@ -372,6 +386,7 @@ class Device(Base):
         device_to_add = cls(**kwargs)
         session.add(device_to_add)
         try_session_commit(session)
+        logger.info("Device Added Sucesfully")
         return "Device Added Sucesfully"
 
 
@@ -380,6 +395,7 @@ class Device(Base):
         device_to_update = cls.from_id(kwargs['id'])
         kwargs.pop('id')
         if device_to_update.deleted:
+            logger.error("The device is already deleted")
             raise HTTPException(
                 status_code=404,
                 detail={
@@ -394,6 +410,7 @@ class Device(Base):
                 setattr(device_to_update,key,value)
         session.add(device_to_update)
         try_session_commit(session)
+        logger.info("Update sucessfull")
         return 'Update Sucessful'
 
     @classmethod
@@ -403,6 +420,7 @@ class Device(Base):
         device_to_delete.deleted_at = datetime.datetime.now(tz=datetime.UTC)
         session.add(device_to_delete)
         try_session_commit(session)
+        logger.info("Deleted Sucessfully")
         return "Deleted Sucessfully"
 
     @classmethod
