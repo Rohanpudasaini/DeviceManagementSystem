@@ -96,7 +96,7 @@ async def get_new_accessToken(refreshToken: RefreshTokenModel):
 async def get_all_device(
     request: Request,
     skip: int | None = 0,
-    limit: int | None = 3,
+    limit: int | None = 20,
 ):
     await log_request(request)
     return Device.get_all(skip=skip, limit=limit)
@@ -162,7 +162,7 @@ async def request_maintainance(deviceMaintainanceModel: DeviceMaintainanceModel)
 async def get_all_users(
     request: Request,
     skip: int | None = 0,
-    limit: int | None = 3
+    limit: int | None = 20
 ):
     await log_request(request)
     return User.get_all(skip=skip, limit=limit)
