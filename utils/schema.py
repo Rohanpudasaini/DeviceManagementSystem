@@ -48,6 +48,7 @@ class UserAddModel(BaseModel):
     postal_code:str|None=None
     designation:Designation = Designation.USER
     profile_pic_url:str|None = None
+    role:list['str'] = None
 
 class DeviceAddModel(BaseModel):
     model_config = ConfigDict(extra='forbid')
@@ -64,7 +65,6 @@ class DeviceAddModel(BaseModel):
 
 class DeviceRequestModel(BaseModel):
     model_config = ConfigDict(extra='forbid')
-    user_id:int
     device_id:int
     
 class DeviceMaintainanceModel(BaseModel):

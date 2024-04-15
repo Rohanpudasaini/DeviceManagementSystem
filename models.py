@@ -106,7 +106,15 @@ class User(Base):
         password = generate_password(12)
         kwargs['password'] = auth.hash_password(password)
         user_to_add = cls(**kwargs)
-        role = Role.from_name('Viewer')
+        final_role = []
+        if kwargs.get('role'):
+            for role_given in kwargs.get('role'):
+                role = Role.from_name(role_given)
+                final_role.append(role)
+        else:
+            role = Role.from_name('Viewer')
+        if not final_role:
+            role = Role.from_name('Viewer')
         user_to_add.roll_id = [role]
         session.add(user_to_add)
         try_session_commit(session)
@@ -183,9 +191,7 @@ class User(Base):
 
     @classmethod
     def login(cls, **kwargs):
-        user_object = cls.from_email(kwargs['email'])
-        check_for_null_or_deleted(user_object, 'email', 'User')
-        is_valid = auth.verify_password(kwargs['password'], user_object.password)
+        is_valid, user_object = cls.verify_credential(**kwargs)
         if is_valid:
             access_token, refresh_token = auth.generate_JWT(email=user_object.email)
             if not user_object.default_password:
@@ -205,6 +211,13 @@ class User(Base):
             status_code=401,
             detail= 'Invalid Credentials'
         )
+        
+    @classmethod
+    def verify_credential(cls, **kwargs):
+        user_object = cls.from_email(kwargs['email'])
+        check_for_null_or_deleted(user_object, 'email', 'User')
+        is_valid = auth.verify_password(kwargs['password'], user_object.password)
+        return is_valid, user_object
 
     @classmethod
     def get_all_role(cls, email):
@@ -234,7 +247,7 @@ class DeviceRequestRecord(Base):
         return False
     
     @classmethod
-    def allot_to_user(cls, user_id, device_id):
+    def allot_to_user(cls, user_email, device_id):
         logger.info(f"Trying to allot a device with device id {device_id} to user with userid {user_id}")
         device_to_allot = Device.from_id(device_id)
         if not device_to_allot:
@@ -248,9 +261,9 @@ class DeviceRequestRecord(Base):
                     }
                 }
             )
-        requested_user = User.from_id(user_id)
+        requested_user = User.from_email(user_email)
         if not requested_user:
-            logger.error(f"Can't find the user with user id {user_id}")
+            logger.error(f"Can't find the user with email {user_email}")
             raise HTTPException(
                 status_code=404,
                 detail={
