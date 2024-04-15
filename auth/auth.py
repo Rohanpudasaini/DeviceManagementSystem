@@ -2,20 +2,15 @@ import time
 from typing import Annotated
 from fastapi import HTTPException
 from jose import jwt, JWTError
-from passlib.context import CryptContext
-from decouple import config
+import os
 import bcrypt
 from fastapi import Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 contain_header = HTTPBearer()
 
-
-
-pwd_context = CryptContext(schemes=['bcrypt'],deprecated='auto')
-
-ACCESS_SECRET = config('secret_access')
-REFRESH_SECRET = config('secret_refresh')
-ALGORITHM = config('algorithm')
+ACCESS_SECRET = os.getenv('secret_access')
+REFRESH_SECRET = os.getenv('secret_refresh')
+ALGORITHM = os.getenv('algorithm')
 
 def generate_JWT(email:str,):
     payload = {
