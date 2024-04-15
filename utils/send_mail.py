@@ -19,4 +19,3 @@ def welcome_mail(email_to_send_to:str,username:str, password:str):
     with smtplib.SMTP_SSL('smtp.gmail.com',465) as smtp:
         smtp.login(EMAIL,PASSWORD)
         smtp.send_message(message)
-        print('Message sent sucesfully')

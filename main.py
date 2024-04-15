@@ -13,6 +13,7 @@ from utils.schema import (
     DeleteModel,
     DeviceMaintainanceModel,
     DeviceRequestModel,
+    DeviceReturnFromMaintainanceModel,
     DeviceUpdateModel,
     LoginModel,
     RefreshTokenModel,
@@ -128,7 +129,7 @@ async def get_all_device(
                     }
 
 
-@app.post('/devices', tags=['Device'], dependencies=[Depends(PermissionChecker('add_device'))])
+@app.post('/devices', tags=['Device'], dependencies=[Depends(PermissionChecker('create_device'))])
 async def add_device(deviceAddModel: DeviceAddModel, request: Request):
     await log_request(request)
     return Device.add(**deviceAddModel.model_dump())
@@ -170,20 +171,24 @@ async def get_single_device(id: int, request: Request):
 async def request_device(deviceRequestModel: DeviceRequestModel, request: Request, token=Depends(auth.validate_token)):
     await log_request(request)
     email = token.get('user_identifier')
-    return DeviceRequestRecord.allot_to_user(email=email, device_id=deviceRequestModel.device_id)
+    return DeviceRequestRecord.allot_to_user(user_email=email, device_id=deviceRequestModel.device_id)
 
 
 @app.post('/return', tags=['Device'], dependencies=[Depends(PermissionChecker('request_device'))])
 async def return_device(deviceReturnModel: DeviceRequestModel, request: Request, token=Depends(auth.validate_token)):
     await log_request(request)
     email = token.get('user_identifier')
-    return DeviceRequestRecord.return_device(email=email, user_id=deviceReturnModel.device_id)
+    return DeviceRequestRecord.return_device(user_email=email, device_id=deviceReturnModel.device_id)
 
 
 @app.post('/maintainance', tags=['Device'], dependencies=[Depends(PermissionChecker('request_device'))])
 async def request_maintainance(deviceMaintainanceModel: DeviceMaintainanceModel):
     return MaintainanceHistory.add(**deviceMaintainanceModel.model_dump())
 
+
+@app.patch('/maintainance', tags=['Device'], dependencies=[Depends(PermissionChecker('request_device'))])
+async def return_maintainance(deviceReturn:DeviceReturnFromMaintainanceModel):
+    return MaintainanceHistory.update(**deviceReturn.model_dump())
 
 @app.get('/users', tags=['User'], dependencies=[Depends(PermissionChecker('view_user'))])
 async def get_all_users(

@@ -78,11 +78,30 @@ class MaintainanceHistory(Base):
         session.add(object_to_add)
         try_session_commit(session)
         device_to_repair.available = False
+        device_to_repair.user = None
         session.add(device_to_repair)
         try_session_commit(session)
         logger.info(
             "Sucessfully given device with id {device_to_repair_id} to repair")
         return 'Sucessfully Given For Repair'
+    
+    @classmethod
+    def update(cls, **kwargs):
+        device_id = kwargs['device_id']
+        kwargs.pop('device_id')
+        record_to_update = session.scalar(Select(cls). where(
+            cls.device_id== device_id,
+            cls.returned_from_repair == None))
+        for key, values in kwargs.items():
+            if values is not None:
+                setattr(record_to_update,key,values)
+        returned_device = Device.from_id(device_id)
+        user_object = User.from_id(record_to_update.current_device_owner_id)
+        returned_device.user = user_object
+        session.add(record_to_update)
+        session.add(returned_device)
+        try_session_commit(session)
+        return f"The device with id {device_id} returned sucesfully"
 
 
 class User(Base):
@@ -124,12 +143,14 @@ class User(Base):
         if role_to_add:
             for role_given in role_to_add:
                 role = Role.from_name(role_given)
-                final_role.append(role)
+                user_to_add.role_id.append(role)
+                # final_role.append(role)
         else:
             role = Role.from_name('Viewer')
+            user_to_add.role_id.append(role)
         if not final_role:
             role = Role.from_name('Viewer')
-        user_to_add.roll_id = [role]
+            user_to_add.role_id.append(role)
         session.add(user_to_add)
         try_session_commit(session)
         logger.info(
