@@ -1,6 +1,6 @@
 from fastapi import HTTPException
 from fastapi.responses import RedirectResponse
-from sqlalchemy import DateTime, ForeignKey, Integer, ARRAY, String, Select
+from sqlalchemy import DateTime, ForeignKey, Integer, ARRAY, String, Select, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, mapped_column, Mapped, relationship
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -137,8 +137,7 @@ class User(Base):
         return (user_to_add.full_name,
                 user_to_add.email,
                 password,
-                'User Added Sucesully, \
-                please login using the password provided in your mail'
+                'User Added Sucesully, please login using the password provided in your mail'
                 )
 
     @classmethod
@@ -210,8 +209,9 @@ class User(Base):
     @classmethod
     def get_all(cls, skip, limit):
         statement = Select(cls).where(
-            cls.deleted is False).offset(skip).limit(limit)
-        return session.scalars(statement).all()
+            cls.deleted == False).offset(skip).limit(limit)
+        count = session.scalar(Select(func.count()).select_from(cls).where(cls.deleted == False))
+        return session.scalars(statement).all(), count
 
     @classmethod
     def from_id(cls, id):
@@ -406,7 +406,7 @@ class DeviceRequestRecord(Base):
         record_to_update = session.scalar(Select(cls).where(
             cls.device_id == device_id,
             cls.user_id == returned_user.id,
-            cls.returned_date is None
+            cls.returned_date == None
             ))
         if record_to_update:
             record_to_update.returned_date = datetime.datetime.now(
@@ -504,9 +504,14 @@ class Device(Base):
     @classmethod
     def get_all(cls, skip, limit):
         statement = Select(cls).where(
-            cls.available is True,
-            cls.deleted is False).offset(skip).limit(limit)
-        return session.scalars(statement).all()
+            cls.available == True,
+            cls.deleted == False).offset(skip).limit(limit)
+        count = session.scalar(Select(func.count()).select_from(cls).where(
+            cls.available == True,
+            cls.deleted == False
+        ))
+        result =  session.scalars(statement).all()
+        return result, count
 
     @classmethod
     def search(cls, name, brand):

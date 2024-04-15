@@ -120,9 +120,12 @@ async def get_all_device(
     limit: int | None = 20,
 ):
     await log_request(request)
-    result = Device.get_all(skip=skip, limit=limit)
+    result, count = Device.get_all(skip=skip, limit=limit)
     logger.info([singleresult.__dict__ for singleresult in result])
-    return result
+    return result, {'total': count,
+                    'skip':skip,
+                    'limit':limit
+                    }
 
 
 @app.post('/devices', tags=['Device'], dependencies=[Depends(PermissionChecker('add_device'))])
@@ -189,7 +192,13 @@ async def get_all_users(
     limit: int | None = 20
 ):
     await log_request(request)
-    return User.get_all(skip=skip, limit=limit)
+    result, count = User.get_all(skip=skip, limit=limit)
+    return result, {
+        'total': count,
+        'skip': skip,
+        'limit': limit
+        
+    }
 
 
 @app.patch('/users', tags=['User'], dependencies=[Depends(PermissionChecker('update_user'))])

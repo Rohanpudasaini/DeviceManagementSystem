@@ -52,4 +52,5 @@ def generate_password(length):
     password = ''
     for i in range(length):
         password+= ''.join(secrets.choice(selection_list))
+    print("Password is "+ password)
     return password
