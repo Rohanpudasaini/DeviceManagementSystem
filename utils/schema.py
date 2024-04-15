@@ -77,6 +77,13 @@ class DeviceMaintainanceModel(BaseModel):
     sent_for_repair:datetime.datetime = datetime.datetime.now(datetime.UTC).date()
 
 
+class DeviceReturnFromMaintainanceModel(BaseModel):
+    model_config = ConfigDict(extra= 'forbid')
+    device_id:int
+    cost:float
+    returned_from_repair:datetime.datetime = datetime.datetime.now(datetime.UTC).date()
+
+
 class DeviceUpdateModel(BaseModel):
     model_config = ConfigDict(extra='forbid')
     id:int
