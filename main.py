@@ -46,10 +46,6 @@ async def home():
     return "Welcome Home"
 
 
-@app.get('/alembic')
-async def alembic_setup():
-    return os.system('alembic upgrade head')
-
 @app.post('/login', tags=['Authentication'])
 async def login(loginModel: LoginModel):
     return User.login(**loginModel.model_dump())
