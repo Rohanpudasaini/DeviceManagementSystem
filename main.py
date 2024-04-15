@@ -1,4 +1,3 @@
-from typing import Annotated
 from fastapi import Depends, FastAPI, HTTPException, Request, BackgroundTasks
 from models import Device, DeviceRequestRecord, MaintainanceHistory, User
 from auth import auth
