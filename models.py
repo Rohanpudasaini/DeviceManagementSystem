@@ -248,7 +248,7 @@ class DeviceRequestRecord(Base):
     
     @classmethod
     def allot_to_user(cls, user_email, device_id):
-        logger.info(f"Trying to allot a device with device id {device_id} to user with userid {user_id}")
+        logger.info(f"Trying to allot a device with device id {device_id} to user with userid {user_email}")
         device_to_allot = Device.from_id(device_id)
         if not device_to_allot:
             logger.error(f"Can't find the device with deviceid {device_id}")
@@ -322,8 +322,8 @@ class DeviceRequestRecord(Base):
             )
 
     @classmethod
-    def return_device(cls, user_id, device_id):
-        logger.info(f"Trying to return device with id {device_id} by user with id {user_id}")
+    def return_device(cls, user_email, device_id):
+        logger.info(f"Trying to return device with id {device_id} by user with id {user_email}")
         device_to_return = Device.from_id(device_id)
         if not device_to_return:
             logger.error("Device not found")
@@ -336,7 +336,7 @@ class DeviceRequestRecord(Base):
                     }
                 }
             )
-        returned_user = User.from_id(user_id)
+        returned_user = User.from_email(user_email)
         if not returned_user:
             logger.error("User not found")
             raise HTTPException(
@@ -344,7 +344,7 @@ class DeviceRequestRecord(Base):
                 detail={
                     'error': {
                         'error_type': constant_messages.REQUEST_NOT_FOUND,
-                        'error_message': constant_messages.request_not_found('user', 'user id')
+                        'error_message': constant_messages.request_not_found('user', 'email')
                     }
                 }
             )
@@ -352,7 +352,7 @@ class DeviceRequestRecord(Base):
         device_to_return.available=True
         session.add(device_to_return)
         try_session_commit(session)
-        record_to_update = session.scalar(Select(cls).where(cls.device_id==device_id,cls.user_id==user_id, cls.returned_date == None))
+        record_to_update = session.scalar(Select(cls).where(cls.device_id==device_id,cls.user_id==returned_user.id, cls.returned_date == None))
         if record_to_update:
             record_to_update.returned_date= datetime.datetime.now(tz=datetime.UTC)
             session.add(record_to_update)
