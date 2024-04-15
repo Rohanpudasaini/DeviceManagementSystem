@@ -5,6 +5,7 @@ from auth.permission_checker import PermissionChecker
 from utils import constant_messages
 from utils.logger import logger
 from utils import send_mail
+import os
 from utils.helper_function import check_for_null_or_deleted, log_request
 from utils.schema import (
     ChangePasswordModel,
@@ -44,6 +45,10 @@ app = FastAPI(
 async def home():
     return "Welcome Home"
 
+
+@app.get('/alembic')
+async def alembic_setup():
+    return os.system('alembic upgrade head')
 
 @app.post('/login', tags=['Authentication'])
 async def login(loginModel: LoginModel):
