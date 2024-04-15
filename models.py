@@ -44,6 +44,8 @@ class MaintainanceHistory(Base):
         kwargs.pop('current_device_owner_id')
         device_to_repair_id = kwargs['device_id']
         kwargs.pop('device_id')
+        logger.info(f"User with id {current_user_id} have requested to maintain device with id {device_to_repair_id}.\
+            The admin with id {requested_by_user_id} have accepted the request")
         device_to_repair = Device.from_id(device_to_repair_id)
         requested_by = User.from_id(requested_by_user_id)
         current_owner = User.from_id(current_user_id)
@@ -105,10 +107,12 @@ class User(Base):
         # username, email, password, message
         password = generate_password(12)
         kwargs['password'] = auth.hash_password(password)
+        role_to_add = kwargs.get('role')
+        kwargs.pop('role')
         user_to_add = cls(**kwargs)
         final_role = []
-        if kwargs.get('role'):
-            for role_given in kwargs.get('role'):
+        if role_to_add:
+            for role_given in role_to_add:
                 role = Role.from_name(role_given)
                 final_role.append(role)
         else:
@@ -298,7 +302,7 @@ class DeviceRequestRecord(Base):
                 )
                 session.add(add_record)
                 try_session_commit(session)
-                logger.info("Allocation sucessfull")
+                logger.info(f"Sucessfully allot device with id {device_id} to user with email {user_email}")
                 return "sucessfully alloted device"
             logger.error("The device is no longer available")
             raise HTTPException(
@@ -310,7 +314,7 @@ class DeviceRequestRecord(Base):
                     }
                 }
             )
-        logger.error("Device is already deleted")
+        logger.error(f"Device with device id {device_id} is already deleted")
         raise HTTPException(
                 status_code=404,
                 detail={
@@ -357,9 +361,9 @@ class DeviceRequestRecord(Base):
             record_to_update.returned_date= datetime.datetime.now(tz=datetime.UTC)
             session.add(record_to_update)
             try_session_commit(session)
-            logger.info("Device Returned Sucessfully")
+            logger.info(f"{user_email} returned device with id {device_id}")
             return 'Device Returned Sucessfully'
-        logger.error("The user have already returned the device")
+        logger.error(f"The user {user_email} have already returned the device with id {device_id}")
         raise HTTPException(
             status_code=404,
             detail={
@@ -399,7 +403,7 @@ class Device(Base):
         device_to_add = cls(**kwargs)
         session.add(device_to_add)
         try_session_commit(session)
-        logger.info("Device Added Sucesfully")
+        logger.info({"sucess":"Device Added Sucesfully", "device_details": kwargs})
         return "Device Added Sucesfully"
 
 
@@ -423,17 +427,17 @@ class Device(Base):
                 setattr(device_to_update,key,value)
         session.add(device_to_update)
         try_session_commit(session)
-        logger.info("Update sucessfull")
+        logger.info({"sucess":"Device Updated Sucesfully", "device_details": kwargs})
         return 'Update Sucessful'
 
     @classmethod
-    def delete(cls, **args):
-        device_to_delete = cls.from_id(args['id_to_delete'])
+    def delete(cls, **kwargs):
+        device_to_delete = cls.from_id(kwargs['id_to_delete'])
         device_to_delete.deleted = True
         device_to_delete.deleted_at = datetime.datetime.now(tz=datetime.UTC)
         session.add(device_to_delete)
         try_session_commit(session)
-        logger.info("Deleted Sucessfully")
+        logger.info({"sucess":"Device Deleted Sucesfully", "device_details": kwargs})
         return "Deleted Sucessfully"
 
     @classmethod
@@ -462,6 +466,11 @@ class Device(Base):
             results['Name'] = name_results_list
         if brand_results_list:
             results['Brand'] = brand_results_list
+        logger.info({"sucess":f"Search of name {name} and brand {brand} give following result",
+                    "details":{
+                        'name':[name.__dict__ for name in name_results_list],
+                        'brand': [brand.__dict__ for brand in brand_results_list]
+                    }})
         return results
 
 

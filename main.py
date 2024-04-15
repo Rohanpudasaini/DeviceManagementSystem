@@ -4,6 +4,7 @@ from models import Device, DeviceRequestRecord, MaintainanceHistory, User
 from auth import auth
 from auth.permission_checker import PermissionChecker
 from utils import constant_messages
+from utils.logger import logger
 from utils import send_mail
 from utils.helper_function import check_for_null_or_deleted, log_request
 from utils.schema import (
@@ -108,7 +109,9 @@ async def get_all_device(
     limit: int | None = 20,
 ):
     await log_request(request)
-    return Device.get_all(skip=skip, limit=limit)
+    result = Device.get_all(skip=skip, limit=limit)
+    logger.info([singleresult.__dict__ for singleresult in result])
+    return result
 
 
 @app.post('/devices', tags=['Device'], dependencies=[Depends(PermissionChecker('add_device'))])
@@ -142,6 +145,10 @@ async def get_single_device(id: int, request: Request):
     await log_request(request)
     device_info = Device.from_id(id)
     check_for_null_or_deleted(device_info)
+    if device_info:
+        logger.info(device_info.__dict__)
+    else:
+        logger.warning(f"No device with id {id}")
     return device_info
 
 
