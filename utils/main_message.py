@@ -76,7 +76,7 @@ If you encounter any issues or have questions, please reach out to our support t
 Thank you for joining, and we hope you find our system useful for managing your device needs efficiently!
 
 Best Regards,
-[Your Organization's Name] Device Management Team
+Vanilla Tech Device Management Team
 
   
   """
