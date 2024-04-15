@@ -206,12 +206,12 @@ class User(Base):
             )
         if role_to_add:
             final_roles = [Role.from_name(role) for role in role_to_add]
+            for final_role in final_roles:
+                user_to_update.role_id.append(final_role)
         for key, value in kwargs.items():
             if value is not None:
                 # print(value)
                 setattr(user_to_update, key, value)
-        for final_role in final_roles:
-            user_to_update.role_id.append(final_role)
         session.add(user_to_update)
         try_session_commit(session)
         logger.info(msg=f'{user_to_update.full_name} updated Sucessful')
