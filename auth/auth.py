@@ -65,7 +65,7 @@ def decodRefreshJWT(token:str):
         raise HTTPException(
                     status_code=401,
                     # detail=
-                    detail='Token verivication Failed'
+                    detail='Token verification Failed'
                 ) 
 
 
