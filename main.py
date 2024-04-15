@@ -50,12 +50,23 @@ async def login(loginModel: LoginModel):
     return User.login(**loginModel.model_dump())
 
 
-@app.post('/signup', tags=['Authentication'], dependencies=[Depends(PermissionChecker('create_user'))])
-async def add_user(userAddModel: UserAddModel, request: Request, backgroundTasks: BackgroundTasks):
+@app.post(
+    '/signup',
+    tags=['Authentication'],
+    dependencies=[Depends(PermissionChecker('create_user'))]
+    )
+async def add_user(
+    userAddModel: UserAddModel,
+    request: Request,
+    backgroundTasks: BackgroundTasks
+    ):
     await log_request(request)
     username, email, password, message = User.add(**userAddModel.model_dump())
     backgroundTasks.add_task(
-        send_mail.welcome_mail, email_to_send_to=email, username=username, password=password)
+        send_mail.welcome_mail,
+        email_to_send_to=email,
+        username=username,
+        password=password)
     return message
 
 
@@ -193,9 +204,18 @@ async def delete_user(userDeleteModel: DeleteModel, request: Request):
     return User.delete(**userDeleteModel.model_dump())
 
 
-@app.get('/user/{id}', tags=['User'], dependencies=[Depends(PermissionChecker('view_user'))])
-async def get_single_user(id: int, request: Request):
+@app.get('/user/id/{id}', tags=['User'], dependencies=[Depends(PermissionChecker('view_user'))])
+async def get_single_user_from_id(id: int, request: Request):
     await log_request(request)
     user_info = User.from_id(id)
+    print(user_info)
     check_for_null_or_deleted(user_info)
     return user_info
+
+@app.get('/user/{email}', tags=['User'], dependencies=[Depends(PermissionChecker('view_user'))])
+async def get_single_user_from_email(email: str, request: Request):
+    await log_request(request)
+    user_info = User.from_email(email)
+    check_for_null_or_deleted(user_info)
+    return user_info
+

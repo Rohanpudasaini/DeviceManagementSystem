@@ -1,4 +1,5 @@
 import json
+import string
 from fastapi import HTTPException
 from . import constant_messages
 from .logger import logger
@@ -44,4 +45,11 @@ async def log_response(response):
     return Response(content=body, status_code=response.status_code, headers=dict(response.headers))
 
 def generate_password(length):
-    return secrets.token_hex(length)
+    letters = string.ascii_letters
+    digits = string.digits
+    special_chars = string.punctuation
+    selection_list = letters + digits + special_chars
+    password = ''
+    for i in range(length):
+        password+= ''.join(secrets.choice(selection_list))
+    return password

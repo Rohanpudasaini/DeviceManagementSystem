@@ -9,7 +9,6 @@ class PermissionChecker:
 
     def __call__(self, user:dict = Depends(auth.validate_token)):
         # for permission_required in self.permission_required:
-        print(self.permission_required)
         # print(Role.get_role_permissions(user['role']))
         is_permitted = Role.role_got_permission(self.permission_required,user['user_identifier'])
         # if permission_required not in Role.get_role_permissions(user['role']):
