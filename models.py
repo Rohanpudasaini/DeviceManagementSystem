@@ -223,9 +223,7 @@ class User(Base):
             email=token['user_identifier']
             if not email:
                 return{"message":"Authentication failed .please check your token !"}
-            print(email)
             user= session.scalar(Select(cls).where(cls.email==email))
-            
             if not user:
                 raise HTTPException(status_code=404, detail={
                     "message": "",
@@ -278,15 +276,17 @@ class User(Base):
                 email=user_object.email)
             if not user_object.default_password:
                 logger.info("Login Sucessfull")
-                return {
-                    'access_token': access_token,
-                    'refresh_token': refresh_token,
-                    'fullname': user_object.full_name,
-                    'profile_pic_url': user_object.profile_pic_url,
-                    'role': user_object.role_id.all()
-                }
+                return response(
+                    message='Login Sucessfull',
+                    data={
+                        'access_token': access_token,
+                        'refresh_token': refresh_token,
+                        'fullname': user_object.full_name,
+                        'profile_pic_url': user_object.profile_pic_url,
+                        'role': user_object.role_id.all()
+                    })
             logger.warning("Default password, redirection to change password")
-            return RedirectResponse('/change_password')
+            return response(message="Defauls password used to login, please change password")
         logger.error("Invalid Credentials")
         raise HTTPException(
             status_code=401,
@@ -428,7 +428,7 @@ class DeviceRequestRecord(Base):
         if device_id:
             device_id = device_id.id
         else:
-            return HTTPException(
+            raise HTTPException(
                 status_code=404,
                 detail='No device with that mac address'
             )
