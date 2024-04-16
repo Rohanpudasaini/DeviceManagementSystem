@@ -204,7 +204,8 @@ class User(Base):
         if role_to_add:
             final_roles = [Role.from_name(role) for role in role_to_add]
             for final_role in final_roles:
-                user_to_update.role_id.append(final_role)
+                if final_role:
+                    user_to_update.role_id.append(final_role)
         for key, value in kwargs.items():
             if value is not None:
                 # print(value)
