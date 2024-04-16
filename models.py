@@ -1,4 +1,4 @@
-from fastapi import HTTPException
+from fastapi import HTTPException,Depends
 from fastapi.responses import RedirectResponse
 from sqlalchemy import DateTime, ForeignKey, Integer, ARRAY, String, Select, func
 from sqlalchemy.dialects.postgresql import JSONB
@@ -205,6 +205,31 @@ class User(Base):
         try_session_commit(session)
         logger.info(msg=f'{user_to_update.full_name} updated Sucessful')
         return 'Update Sucessful'
+    
+    @classmethod
+    def current_device(cls,token:str):
+        try:
+            user_email=auth.decodAccessJWT(token)
+            email=user_email['user_identifier']
+            if not user_email:
+                return{"message":"Authentication failed .please check your token !"}
+            
+            user=session.query(User).filter(User.email==email).first()
+            
+            if not user:
+                raise HTTPException(status_code=404, detail="User not found. Please check the email address.")
+            
+            devices=session.query(cls.devices).filter(cls.email==email).all()
+            if not devices:
+                raise HTTPException(status_code=404, detail="Device not found. Please check the MAC address.")
+            
+            return devices
+        
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            raise HTTPException(status_code=500, detail="An unexpected error occurred. Please try again later.")
+        
+    
 
     @classmethod
     def delete(cls, **args):

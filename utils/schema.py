@@ -126,3 +126,5 @@ class ChangePasswordModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
     old_password: str
     new_password: str
+
+
