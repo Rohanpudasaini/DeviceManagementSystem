@@ -219,7 +219,7 @@ class User(Base):
             if not user:
                 raise HTTPException(status_code=404, detail="User not found. Please check the email address.")
             
-            devices=session.query(Device).filter(Device.user_id==user.id,Device.mac_address==mac_address).all()
+            devices=session.query(cls.devices).filter(cls.email==email).all()
             if not devices:
                 raise HTTPException(status_code=404, detail="Device not found. Please check the MAC address.")
             
