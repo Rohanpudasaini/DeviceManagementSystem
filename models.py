@@ -4,7 +4,7 @@ from sqlalchemy import DateTime, ForeignKey, Integer, ARRAY, String, Select, fun
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, mapped_column, Mapped, relationship
 from sqlalchemy.ext.hybrid import hybrid_property
-from utils.helper_function import check_for_null_or_deleted, generate_password
+from utils.helper_function import check_for_null_or_deleted, generate_password, response
 from utils.schema import Designation, DeviceStatus, DeviceType, Purpose
 import datetime
 from database.database_connection import session, try_session_commit
@@ -33,30 +33,36 @@ class MaintainanceHistory(Base):
     returned_from_repair = mapped_column(DateTime)
 
     @classmethod
-    def add(cls, **kwargs):
-        user_email = kwargs['email']
-        kwargs.pop('user_id')
+    def add(cls, email, **kwargs):
+        user_email = email
         device_to_repair_mac_address = kwargs['mac_address']
         kwargs.pop('mac_address')
-        logger.info(f"User with email {user_email} have requested to \
-        maintain device with mac address {device_to_repair_mac_address}.")
+        logger.info(f"User with email {user_email} have requested to repair device with mac address {device_to_repair_mac_address}.")
         device_to_repair = Device.from_mac_address(device_to_repair_mac_address)
         user = User.from_email(user_email)
-        if not user and device_to_repair:
+        if not user or not device_to_repair:
+            if not device_to_repair.available:
+                raise HTTPException(
+                status_code=404,
+                detail= response(error={
+                        'error_type': constant_messages.REQUEST_NOT_FOUND,
+                        'error_message': constant_messages.request_not_found(
+                            'device',
+                            'mac address, as it is flagged as not available'
+                        )
+                    })
+            )
             logger.error(
-                f'Can\'t find user with email {user_email} \
-                or the device with mac address {device_to_repair_mac_address} found')
+                f"Can't find user with email {user_email} or the device with mac address {device_to_repair_mac_address}")
             raise HTTPException(
                 status_code=404,
-                detail={
-                    'error': {
+                detail= response(error={
                         'error_type': constant_messages.REQUEST_NOT_FOUND,
                         'error_message': constant_messages.request_not_found(
                             'users or device',
                             'email or mac address'
                         )
-                    }
-                }
+                    })
             )
         kwargs['devices'] = device_to_repair
         kwargs['reported_by'] = user
@@ -78,6 +84,14 @@ class MaintainanceHistory(Base):
         mac_address = kwargs['mac_address']
         kwargs.pop('mac_address')
         returned_device = Device.from_mac_address(mac_address)
+        if not returned_device:
+            raise HTTPException(
+                status_code= 404,
+                detail= response(error={
+                    'error_type': constant_messages.REQUEST_NOT_FOUND,
+                    'error_message': constant_messages.request_not_found('device', 'mac_address')
+                })
+            )
         device_id = returned_device.id
         record_to_update = session.scalar(Select(cls). where(
             cls.device_id== device_id,

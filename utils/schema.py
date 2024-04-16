@@ -73,7 +73,6 @@ class DeviceMaintainanceModel(BaseModel):
     description: str
     cost: float | None = None
     mac_address: str
-    email:EmailStr
     sent_for_repair: datetime.datetime = datetime.datetime.now(datetime.UTC).date()
 
 
