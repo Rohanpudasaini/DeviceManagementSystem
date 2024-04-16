@@ -54,3 +54,10 @@ def generate_password(length):
         password+= ''.join(secrets.choice(selection_list))
     print("Password is "+ password)
     return password
+
+def response(message= "", error="", data =""):
+    return {
+        "message": message,
+        "error": error,
+        "data": data
+    }

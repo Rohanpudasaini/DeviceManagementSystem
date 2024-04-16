@@ -163,16 +163,16 @@ async def search_device(request: Request, name=None, brand=None):
     return Device.search(name, brand)
 
 
-@app.get('/device/{id}', tags=['Device'], dependencies=[Depends(PermissionChecker('view_device'))])
-async def get_single_device(id: int, request: Request):
-    await log_request(request)
-    device_info = Device.from_id(id)
-    check_for_null_or_deleted(device_info)
-    if device_info:
-        logger.info(device_info.__dict__)
-    else:
-        logger.warning(f"No device with id {id}")
-    return device_info
+# @app.get('/device/{id}', tags=['Device'], dependencies=[Depends(PermissionChecker('view_device'))])
+# async def get_single_device(id: int, request: Request):
+#     await log_request(request)
+#     device_info = Device.from_id(id)
+#     check_for_null_or_deleted(device_info)
+#     if device_info:
+#         logger.info(device_info.__dict__)
+#     else:
+#         logger.warning(f"No device with id {id}")
+#     return device_info
 
 
 @app.post('/request', tags=['Device'], dependencies=[Depends(PermissionChecker('request_device'))])
@@ -190,16 +190,26 @@ async def return_device(deviceReturnModel: DeviceRequestModel, request: Request,
 
 
 @app.post(
-    '/maintainance',
+    '/device/request_maintainance',
     tags=['Device'],
     status_code= 201,
     dependencies=[Depends(PermissionChecker('request_device'))]
     )
-async def request_maintainance(deviceMaintainanceModel: DeviceMaintainanceModel):
-    return MaintainanceHistory.add(**deviceMaintainanceModel.model_dump())
+async def request_maintainance(
+    deviceMaintainanceModel: DeviceMaintainanceModel,
+    token = Depends(auth.validate_token)
+    ):
+    return MaintainanceHistory.add(
+        email= token.get('user_identifier'),
+        **deviceMaintainanceModel.model_dump()
+        )
 
 
-@app.patch('/maintainance', tags=['Device'], dependencies=[Depends(PermissionChecker('request_device'))])
+@app.patch(
+    '/device/return_maintainance',
+    tags=['Device'],
+    dependencies=[Depends(PermissionChecker('request_device'))]
+    )
 async def return_maintainance(deviceReturn:DeviceReturnFromMaintainanceModel):
     return MaintainanceHistory.update(**deviceReturn.model_dump())
 
