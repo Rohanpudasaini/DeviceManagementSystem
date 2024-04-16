@@ -6,7 +6,7 @@ from utils import constant_messages
 from utils.logger import logger
 from utils import send_mail
 import os
-from utils.helper_function import check_for_null_or_deleted, log_request
+from utils.helper_function import check_for_null_or_deleted, log_request, response
 from utils.schema import (
     ChangePasswordModel,
     DeviceAddModel,
@@ -59,42 +59,10 @@ async def login(loginModel: LoginModel):
     )
 async def add_user(
     userAddModel: UserAddModel,
-    request: Request,
-    backgroundTasks: BackgroundTasks
+    request: Request
     ):
     await log_request(request)
-    username, email, password, message = User.add(**userAddModel.model_dump())
-    backgroundTasks.add_task(
-        send_mail.welcome_mail,
-        email_to_send_to=email,
-        username=username,
-        password=password)
-    return message
-
-
-@app.post('/change_password', tags=['Authentication'])
-def change_password(loginModel: LoginModel):
-    # print(loginModel)
-    is_valid, _ = User.verify_credential(**loginModel.model_dump())
-    if is_valid:
-        access_token, _ = auth.generate_JWT(email=loginModel.email)
-        return {
-            'Redirect': 'You are redirectd as you are using the default password',
-            "Redirect_message": "Please Send Patch method to '/change_password' with new password and your token in header.",
-            'access_token': access_token
-        }
-    raise HTTPException(
-        status_code=401,
-        detail={
-            'error_type': "Authenticatin failed",
-            'error_message': "Please provide valid credentials"
-        }
-    )
-
-
-@app.patch('/change_password', tags=['Authentication'])
-def update_password(changePasswordModel: ChangePasswordModel, token=Depends(auth.validate_token)):
-    return User.change_password(email=token.get("user_identifier"), **changePasswordModel.model_dump())
+    return User.add(**userAddModel.model_dump())
 
 
 @app.post('/refresh', tags=['Authentication'],status_code= 201)
@@ -217,16 +185,20 @@ async def return_maintainance(deviceReturn:DeviceReturnFromMaintainanceModel):
 async def get_all_users(
     request: Request,
     skip: int | None = 0,
-    limit: int | None = 20
+    limit: int | None = 20,
+    id: int | None = None
 ):
     await log_request(request)
+    if id:
+        user_info =  User.from_id(id)
+        check_for_null_or_deleted(user_info,'id','user')
+        return response(data=user_info)
     result, count = User.get_all(skip=skip, limit=limit)
-    return result, {
+    return response(data =[{
         'total': count,
         'skip': skip,
         'limit': limit
-        
-    }
+    }, result])
 
 
 @app.patch('/users', tags=['User'], dependencies=[Depends(PermissionChecker('update_user'))])
@@ -241,18 +213,21 @@ async def delete_user(userDeleteModel: DeleteModel, request: Request):
     return User.delete(**userDeleteModel.model_dump())
 
 
-@app.get('/user/id/{id}', tags=['User'], dependencies=[Depends(PermissionChecker('view_user'))])
-async def get_single_user_from_id(id: int, request: Request):
-    await log_request(request)
-    user_info = User.from_id(id)
-    print(user_info)
-    check_for_null_or_deleted(user_info)
-    return user_info
+@app.post('/user/request_mail', tags=['User'])
+def request_mail(backgroundTasks:BackgroundTasks,token = Depends(auth.validate_token)):
+    email = token['user_identifier']
+    user_object = User.from_email(email)
+    backgroundTasks.add_task(
+        send_mail.welcome_mail,
+        email_to_send_to=email,
+        username=user_object.full_name,
+        password=user_object.password)
+    return response(message="Mail sent sucessfully, please check your registered mail")
 
-@app.get('/user/{email}', tags=['User'], dependencies=[Depends(PermissionChecker('view_user'))])
-async def get_single_user_from_email(email: str, request: Request):
-    await log_request(request)
-    user_info = User.from_email(email)
-    check_for_null_or_deleted(user_info)
-    return user_info
+
+@app.post('/user/change_password', tags=['Authentication'])
+def update_password(changePasswordModel: ChangePasswordModel, token=Depends(auth.validate_token)):
+    return User.change_default_password(email=token.get("user_identifier"), **changePasswordModel.model_dump())
+
+
 

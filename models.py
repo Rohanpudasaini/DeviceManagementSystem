@@ -139,7 +139,8 @@ class User(Base):
     def add(cls, **kwargs):
         # username, email, password, message
         password = generate_password(12)
-        kwargs['password'] = auth.hash_password(password)
+        # kwargs['password'] = auth.hash_password(password)
+        kwargs['password'] = password
         role_to_add = kwargs.get('role')
         kwargs.pop('role')
         user_to_add = cls(**kwargs)
@@ -156,19 +157,18 @@ class User(Base):
         try_session_commit(session)
         logger.info(
             msg=f'User with username {user_to_add.full_name} Added Sucesully')
-        return (user_to_add.full_name,
-                user_to_add.email,
-                password,
-                'User Added Sucesully, please login using the password provided in your mail'
-                )
+        return response(
+            message='User added sucessfully, Please find your tokens below. Please request for a temporary default password to login and change your password. Failing to verify your email will result in permanent deletion of your account in 7 days.',
+            data= {
+                'access_token' : auth.generate_JWT(kwargs['email'])[0],
+                'refresh_token' : auth.generate_JWT(kwargs['email'])[1]
+                }
+                        )
 
     @classmethod
-    def change_password(cls, email, **kwargs):
+    def change_default_password(cls, email, **kwargs):
         user_to_update = cls.from_email(email)
-        if auth.verify_password(
-            kwargs['new_password'],
-            user_to_update.password
-        ):
+        if kwargs['new_password'] == user_to_update.password:
             logger.warning("Same password as old password")
             raise HTTPException(
                 status_code=409,
@@ -177,10 +177,7 @@ class User(Base):
                     'error_message': "New password same as old password"
                 }
             )
-        if auth.verify_password(
-            kwargs['old_password'],
-            user_to_update.password
-        ):
+        if kwargs['old_password'] == user_to_update.password:
             user_to_update.password = auth.hash_password(
                 kwargs['new_password'])
             user_to_update.default_password = False
