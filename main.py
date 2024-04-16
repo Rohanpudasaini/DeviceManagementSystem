@@ -172,14 +172,14 @@ async def get_single_device(id: int, request: Request):
 async def request_device(deviceRequestModel: DeviceRequestModel, request: Request, token=Depends(auth.validate_token)):
     await log_request(request)
     email = token.get('user_identifier')
-    return DeviceRequestRecord.allot_to_user(user_email=email, device_id=deviceRequestModel.device_id)
+    return DeviceRequestRecord.allot_to_user(user_email=email, mac_address=deviceRequestModel.mac_address)
 
 
 @app.post('/return', tags=['Device'], dependencies=[Depends(PermissionChecker('request_device'))])
 async def return_device(deviceReturnModel: DeviceRequestModel, request: Request, token=Depends(auth.validate_token)):
     await log_request(request)
     email = token.get('user_identifier')
-    return DeviceRequestRecord.return_device(user_email=email, device_id=deviceReturnModel.device_id)
+    return DeviceRequestRecord.return_device(user_email=email, mac_address=deviceReturnModel.mac_address)
 
 
 @app.post(
