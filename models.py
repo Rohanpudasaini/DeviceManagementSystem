@@ -1,4 +1,4 @@
-from fastapi import HTTPException,Depends
+from fastapi import HTTPException
 from fastapi.responses import RedirectResponse
 from sqlalchemy import DateTime, ForeignKey, Integer, ARRAY, String, Select, func
 from sqlalchemy.dialects.postgresql import JSONB
@@ -209,17 +209,21 @@ class User(Base):
     @classmethod
     def current_device(cls,token:str):
         try:
-            user_email=auth.decodAccessJWT(token)
-            email=user_email['user_identifier']
-            if not user_email:
+            # user_email=auth.decodAccessJWT(token)
+            email=token['user_identifier']
+            if not email:
                 return{"message":"Authentication failed .please check your token !"}
-            
-            user=session.query(User).filter(User.email==email).first()
+            print(email)
+            user= session.scalar(Select(cls).where(cls.email==email))
             
             if not user:
-                raise HTTPException(status_code=404, detail="User not found. Please check the email address.")
+                raise HTTPException(status_code=404, detail={
+                    "message": "",
+                    "error": "User not found. Please check the email address.",
+                    "data": "",
+                })
             
-            devices=session.query(cls.devices).filter(cls.email==email).all()
+            devices = user.devices
             if not devices:
                 raise HTTPException(status_code=404, detail="Device not found. Please check the MAC address.")
             
