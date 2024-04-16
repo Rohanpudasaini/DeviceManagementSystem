@@ -41,6 +41,17 @@ class MaintainanceHistory(Base):
         device_to_repair = Device.from_mac_address(device_to_repair_mac_address)
         user = User.from_email(user_email)
         if not user or not device_to_repair:
+            if not device_to_repair.available:
+                raise HTTPException(
+                status_code=404,
+                detail= response(error={
+                        'error_type': constant_messages.REQUEST_NOT_FOUND,
+                        'error_message': constant_messages.request_not_found(
+                            'device',
+                            'mac address, as it is flagged as not available'
+                        )
+                    })
+            )
             logger.error(
                 f"Can't find user with email {user_email} or the device with mac address {device_to_repair_mac_address}")
             raise HTTPException(
