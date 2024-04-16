@@ -4,7 +4,6 @@ from sqlalchemy import DateTime, ForeignKey, Integer, ARRAY, String, Select, fun
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, mapped_column, Mapped, relationship
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy_json import mutable_json_type
 from utils.helper_function import check_for_null_or_deleted, generate_password
 from utils.schema import Designation, DeviceStatus, DeviceType, Purpose
 import datetime
