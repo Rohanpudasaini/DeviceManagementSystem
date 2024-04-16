@@ -48,7 +48,7 @@ class UserAddModel(BaseModel):
     postal_code:str|None=None
     designation:Designation = Designation.USER
     profile_pic_url:str|None = None
-    role:list[str] = None
+    role:list[str] = ['Viewer']
 
 class DeviceAddModel(BaseModel):
     model_config = ConfigDict(extra='forbid')
@@ -109,7 +109,7 @@ class UserUpdateModel(BaseModel):
     allow_notification:bool|None = None
     designation:Designation|None = None
     profile_pic_url:str|None = None
-    role:list[str]|None = None
+    role:list[str]|None = ['Viewer']
 
 class DeleteModel(BaseModel):
     model_config = ConfigDict(extra='forbid')

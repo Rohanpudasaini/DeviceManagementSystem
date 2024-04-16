@@ -139,18 +139,15 @@ class User(Base):
         role_to_add = kwargs.get('role')
         kwargs.pop('role')
         user_to_add = cls(**kwargs)
-        final_role = []
         if role_to_add:
             for role_given in role_to_add:
                 role = Role.from_name(role_given)
-                user_to_add.role_id.append(role)
-                # final_role.append(role)
-        else:
-            role = Role.from_name('Viewer')
-            user_to_add.role_id.append(role)
-        if not final_role:
-            role = Role.from_name('Viewer')
-            user_to_add.role_id.append(role)
+                if role:
+                    user_to_add.role_id.append(role)
+                
+        
+        role = Role.from_name('Viewer')
+        user_to_add.role_id.append(role)
         session.add(user_to_add)
         try_session_commit(session)
         logger.info(
@@ -257,7 +254,6 @@ class User(Base):
                     'profile_pic_url': user_object.profile_pic_url,
                     'role': user_object.role_id.all()
                 }
-            kwargs['token'] = access_token
             logger.warning("Default password, redirection to change password")
             return RedirectResponse('/change_password')
         logger.error("Invalid Credentials")

@@ -52,7 +52,8 @@ async def login(loginModel: LoginModel):
 
 
 @app.post(
-    '/signup',
+    '/add_user',
+    status_code= 201,
     tags=['Authentication'],
     dependencies=[Depends(PermissionChecker('create_user'))]
     )
@@ -96,7 +97,7 @@ def update_password(changePasswordModel: ChangePasswordModel, token=Depends(auth
     return User.change_password(email=token.get("user_identifier"), **changePasswordModel.model_dump())
 
 
-@app.post('/refresh', tags=['Authentication'])
+@app.post('/refresh', tags=['Authentication'],status_code= 201)
 async def get_new_accessToken(refreshToken: RefreshTokenModel):
     token = auth.decodRefreshJWT(refreshToken.token)
     if token:
@@ -129,7 +130,7 @@ async def get_all_device(
                     }
 
 
-@app.post('/devices', tags=['Device'], dependencies=[Depends(PermissionChecker('create_device'))])
+@app.post('/devices', tags=['Device'], status_code= 201, dependencies=[Depends(PermissionChecker('create_device'))])
 async def add_device(deviceAddModel: DeviceAddModel, request: Request):
     await log_request(request)
     return Device.add(**deviceAddModel.model_dump())
@@ -181,7 +182,12 @@ async def return_device(deviceReturnModel: DeviceRequestModel, request: Request,
     return DeviceRequestRecord.return_device(user_email=email, device_id=deviceReturnModel.device_id)
 
 
-@app.post('/maintainance', tags=['Device'], dependencies=[Depends(PermissionChecker('request_device'))])
+@app.post(
+    '/maintainance',
+    tags=['Device'],
+    status_code= 201,
+    dependencies=[Depends(PermissionChecker('request_device'))]
+    )
 async def request_maintainance(deviceMaintainanceModel: DeviceMaintainanceModel):
     return MaintainanceHistory.add(**deviceMaintainanceModel.model_dump())
 
