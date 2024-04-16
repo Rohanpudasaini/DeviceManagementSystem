@@ -42,7 +42,7 @@ class UserAddModel(BaseModel):
     address: str | None = None
     city: str | None = None
     postal_code: str | None = None
-    designation: Designation = Designation.USER
+    designation: Designation = Designation.VIEWER
     profile_pic_url: str | None = None
     role: list[str] = ["Viewer"]
 
@@ -52,7 +52,7 @@ class DeviceAddModel(BaseModel):
     name: str
     brand: str
     price: float
-    mac_address: str | None = None
+    mac_address: str
     description: str | None = None
     status: DeviceStatus = DeviceStatus.ACTIVE
     bill_image: str

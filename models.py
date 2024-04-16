@@ -6,7 +6,7 @@ from sqlalchemy.orm import DeclarativeBase, mapped_column, Mapped, relationship
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy_json import mutable_json_type
 from utils.helper_function import check_for_null_or_deleted, generate_password
-from utils.schema import Designation, DeviceStatus, DeviceType
+from utils.schema import Designation, DeviceStatus, DeviceType, Purpose
 import datetime
 from database.database_connection import session, try_session_commit
 from auth import auth
@@ -22,81 +22,72 @@ class MaintainanceHistory(Base):
     __tablename__ = 'maintainance_history'
     id: Mapped[int] = mapped_column(primary_key=True)
     description: Mapped[str]
+    purpose:Mapped[Purpose]
     cost: Mapped[int] = mapped_column(nullable=True)
     device_id: Mapped[int] = mapped_column(ForeignKey('device.id'))
     devices = relationship('Device', back_populates='maintainance_record')
-    maintainance_requested_user_id: Mapped[int] = mapped_column(
+    user_id: Mapped[int] = mapped_column(
         ForeignKey('user.id'), nullable=True)
-    current_device_owner_id: Mapped[int] = mapped_column(
-        ForeignKey('user.id'), nullable=True)
-    repair_requested = relationship(
-        'User',
-        foreign_keys=[maintainance_requested_user_id],
-        backref='sent_for_repair'
-        )
     reported_by = relationship('User', foreign_keys=[
-        current_device_owner_id], backref='reported_device')
+        user_id], backref='reported_device')
     sent_for_repair = mapped_column(DateTime)
     returned_from_repair = mapped_column(DateTime)
 
     @classmethod
     def add(cls, **kwargs):
-        requested_by_user_id = kwargs['maintainance_requested_user_id']
-        kwargs.pop('maintainance_requested_user_id')
-        current_user_id = kwargs['current_device_owner_id']
-        kwargs.pop('current_device_owner_id')
-        device_to_repair_id = kwargs['device_id']
-        kwargs.pop('device_id')
-        logger.info(f"User with id {current_user_id} have requested to \
-        maintain device with id {device_to_repair_id}.\
-        The admin with id {requested_by_user_id} have accepted the request")
-        device_to_repair = Device.from_id(device_to_repair_id)
-        requested_by = User.from_id(requested_by_user_id)
-        current_owner = User.from_id(current_user_id)
-        if not requested_by and current_owner and device_to_repair:
+        user_email = kwargs['email']
+        kwargs.pop('user_id')
+        device_to_repair_mac_address = kwargs['mac_address']
+        kwargs.pop('mac_address')
+        logger.info(f"User with email {user_email} have requested to \
+        maintain device with mac address {device_to_repair_mac_address}.")
+        device_to_repair = Device.from_mac_address(device_to_repair_mac_address)
+        user = User.from_email(user_email)
+        if not user and device_to_repair:
             logger.error(
-                f'Can\'t find user with id {requested_by_user_id} \
-                or {current_user_id} \
-                or the device with id {device_to_repair_id} found')
+                f'Can\'t find user with email {user_email} \
+                or the device with mac address {device_to_repair_mac_address} found')
             raise HTTPException(
                 status_code=404,
                 detail={
                     'error': {
                         'error_type': constant_messages.REQUEST_NOT_FOUND,
                         'error_message': constant_messages.request_not_found(
-                            'users and device',
-                            'user id and device id'
+                            'users or device',
+                            'email or mac address'
                         )
                     }
                 }
             )
         kwargs['devices'] = device_to_repair
-        kwargs['repair_requested'] = requested_by
-        kwargs['reported_by'] = current_owner
+        kwargs['reported_by'] = user
 
         object_to_add = cls(**kwargs)
         session.add(object_to_add)
         try_session_commit(session)
         device_to_repair.available = False
+        device_to_repair.status = DeviceStatus.INACTIVE
         device_to_repair.user = None
         session.add(device_to_repair)
         try_session_commit(session)
         logger.info(
-            "Sucessfully given device with id {device_to_repair_id} to repair")
+            f"Sucessfully given device with mac address {device_to_repair_mac_address} to repair")
         return 'Sucessfully Given For Repair'
     
     @classmethod
     def update(cls, **kwargs):
-        device_id = kwargs['device_id']
-        kwargs.pop('device_id')
+        mac_address = kwargs['mac_address']
+        kwargs.pop('mac_address')
+        returned_device = Device.from_mac_address(mac_address)
+        device_id = returned_device.id
         record_to_update = session.scalar(Select(cls). where(
             cls.device_id== device_id,
             cls.returned_from_repair == None))
         for key, values in kwargs.items():
             if values is not None:
                 setattr(record_to_update,key,values)
-        returned_device = Device.from_id(device_id)
-        user_object = User.from_id(record_to_update.current_device_owner_id)
+        # returned_device = Device.from_id(device_id)
+        user_object = User.from_id(record_to_update.user_id)
         returned_device.user = user_object
         session.add(record_to_update)
         session.add(returned_device)
@@ -119,7 +110,7 @@ class User(Base):
     creation_date = mapped_column(
         DateTime, default=datetime.datetime.now(tz=datetime.UTC))
     allow_notification: Mapped[bool] = mapped_column(default=True)
-    designation: Mapped[Designation] = mapped_column(default=Designation.USER)
+    designation: Mapped[Designation] = mapped_column(default=Designation.VIEWER)
     deleted: Mapped[bool] = mapped_column(default=False)
     deleted_at = mapped_column(DateTime, nullable=True)
     role_id = relationship('Role', back_populates='user_id',
@@ -187,8 +178,8 @@ class User(Base):
 
     @classmethod
     def update(cls, **kwargs):
-        user_to_update = cls.from_id(kwargs['id'])
-        kwargs.pop('id')
+        user_to_update = cls.from_email(kwargs['email'])
+        kwargs.pop('email')
         role_to_add = kwargs['role']
         if user_to_update.deleted:
             logger.error(msg=f'{user_to_update.name} user is Already Deleted')
@@ -217,7 +208,7 @@ class User(Base):
 
     @classmethod
     def delete(cls, **args):
-        user_to_delete = cls.from_id(args['id_to_delete'])
+        user_to_delete = cls.from_email(args['identifier'])
         user_to_delete.deleted = True
         user_to_delete.deleted_at = datetime.datetime.now(tz=datetime.UTC)
         session.add(user_to_delete)
@@ -300,11 +291,19 @@ class DeviceRequestRecord(Base):
         return False
 
     @classmethod
-    def allot_to_user(cls, user_email, device_id):
+    def allot_to_user(cls, user_email, mac_address):
+        device_to_allot = Device.from_mac_address(mac_address)
+        if device_to_allot:
+            device_id = device_to_allot.id
+        else:
+            return HTTPException(
+                status_code=404,
+                detail='No device with that mac address'
+            )
         logger.info(
             f"Trying to allot a device with device id {device_id} to user \
-            with userid {user_email}")
-        device_to_allot = Device.from_id(device_id)
+            with email {user_email}")
+        # device_to_allot = Device.from_id(device_id)
         if not device_to_allot:
             logger.error(f"Can't find the device with deviceid {device_id}")
             raise HTTPException(
@@ -334,9 +333,9 @@ class DeviceRequestRecord(Base):
             )
         if not device_to_allot.deleted:
             if device_to_allot.available:
-                if device_to_allot.status.value != 'added':
+                if device_to_allot.status.value != 'active':
                     logger.error(
-                        "The device with device id {device_id} is not published")
+                        "The device with device id {device_id} is not active")
                     raise HTTPException(
                         status_code=404,
                         detail={
@@ -385,7 +384,15 @@ class DeviceRequestRecord(Base):
         )
 
     @classmethod
-    def return_device(cls, user_email, device_id):
+    def return_device(cls, user_email, mac_address):
+        device_id = Device.from_mac_address(mac_address)
+        if device_id:
+            device_id = device_id.id
+        else:
+            return HTTPException(
+                status_code=404,
+                detail='No device with that mac address'
+            )
         logger.info(
             f"Trying to return device with id {device_id} by user with id {user_email}")
         device_to_return = Device.from_id(device_id)
@@ -451,12 +458,13 @@ class DeviceRequestRecord(Base):
 class Device(Base):
     __tablename__ = 'device'
     id: Mapped[int] = mapped_column(primary_key=True)
+    mac_address:Mapped[str] = mapped_column(nullable=False, unique=True)
     name: Mapped[str] = mapped_column(nullable=False)
     brand: Mapped[str] = mapped_column(nullable=False)
     price: Mapped[float] = mapped_column(nullable=False)
     description: Mapped[str]
     available: Mapped[bool] = mapped_column(default=True)
-    status: Mapped[DeviceStatus] = mapped_column(default=DeviceStatus.ADDED)
+    status: Mapped[DeviceStatus] = mapped_column(default=DeviceStatus.ACTIVE)
     bill_image: Mapped[str]
     product_images = mapped_column(ARRAY(String))
     purchase_date = mapped_column(
@@ -464,7 +472,7 @@ class Device(Base):
     type: Mapped[DeviceType]
     deleted: Mapped[bool] = mapped_column(default=False)
     deleted_at = mapped_column(DateTime, nullable=True)
-    specification = mapped_column(mutable_json_type(dbtype=JSONB, nested=True))
+    specification = mapped_column(ARRAY(String))
     user_id: Mapped[int] = mapped_column(ForeignKey('user.id'), nullable=True)
     user = relationship('User', back_populates='devices')
     maintainance_record = relationship(
@@ -482,8 +490,8 @@ class Device(Base):
 
     @classmethod
     def update(cls, **kwargs):
-        device_to_update = cls.from_id(kwargs['id'])
-        kwargs.pop('id')
+        device_to_update = cls.from_mac_address(kwargs['mac_address'])
+        kwargs.pop('mac_address')
         if device_to_update.deleted:
             logger.error("The device is already deleted")
             raise HTTPException(
@@ -506,7 +514,7 @@ class Device(Base):
 
     @classmethod
     def delete(cls, **kwargs):
-        device_to_delete = cls.from_id(kwargs['id_to_delete'])
+        device_to_delete = cls.from_mac_address(kwargs['identifier'])
         device_to_delete.deleted = True
         device_to_delete.deleted_at = datetime.datetime.now(tz=datetime.UTC)
         session.add(device_to_delete)
@@ -518,6 +526,10 @@ class Device(Base):
     @classmethod
     def from_id(cls, id):
         return session.scalar(Select(cls).where(cls.id == id))
+    
+    @classmethod
+    def from_mac_address(cls, mac_address):
+        return session.scalar(Select(cls).where(cls.mac_address == mac_address))
 
     @classmethod
     def get_all(cls, skip, limit):
@@ -552,8 +564,8 @@ class Device(Base):
             results['Brand'] = brand_results_list
         logger.info({"sucess": f"Search of name {name} and brand {brand} give following result",
                     "details": {
-                        'name': [name.__dict__ for name in name_results_list],
-                        'brand': [brand.__dict__ for brand in brand_results_list]
+                        'name_result': [name.__dict__ for name in name_results_list],
+                        'brand_result': [brand.__dict__ for brand in brand_results_list]
                     }})
         return results
 
