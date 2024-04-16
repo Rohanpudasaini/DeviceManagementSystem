@@ -21,7 +21,7 @@ class MaintainanceHistory(Base):
     __tablename__ = 'maintainance_history'
     id: Mapped[int] = mapped_column(primary_key=True)
     description: Mapped[str]
-    purpose:Mapped[Purpose]
+    purpose: Mapped[Purpose]
     cost: Mapped[int] = mapped_column(nullable=True)
     device_id: Mapped[int] = mapped_column(ForeignKey('device.id'))
     devices = relationship('Device', back_populates='maintainance_record')
@@ -37,32 +37,34 @@ class MaintainanceHistory(Base):
         user_email = email
         device_to_repair_mac_address = kwargs['mac_address']
         kwargs.pop('mac_address')
-        logger.info(f"User with email {user_email} have requested to repair device with mac address {device_to_repair_mac_address}.")
-        device_to_repair = Device.from_mac_address(device_to_repair_mac_address)
+        logger.info(
+            f"User with email {user_email} have requested to repair device with mac address {device_to_repair_mac_address}.")
+        device_to_repair = Device.from_mac_address(
+            device_to_repair_mac_address)
         user = User.from_email(user_email)
         if not user or not device_to_repair:
             if not device_to_repair.available:
                 raise HTTPException(
-                status_code=404,
-                detail= response(error={
+                    status_code=404,
+                    detail=response(error={
                         'error_type': constant_messages.REQUEST_NOT_FOUND,
                         'error_message': constant_messages.request_not_found(
                             'device',
                             'mac address, as it is flagged as not available'
                         )
                     })
-            )
+                )
             logger.error(
                 f"Can't find user with email {user_email} or the device with mac address {device_to_repair_mac_address}")
             raise HTTPException(
                 status_code=404,
-                detail= response(error={
-                        'error_type': constant_messages.REQUEST_NOT_FOUND,
-                        'error_message': constant_messages.request_not_found(
-                            'users or device',
-                            'email or mac address'
-                        )
-                    })
+                detail=response(error={
+                    'error_type': constant_messages.REQUEST_NOT_FOUND,
+                    'error_message': constant_messages.request_not_found(
+                        'users or device',
+                        'email or mac address'
+                    )
+                })
             )
         kwargs['devices'] = device_to_repair
         kwargs['reported_by'] = user
@@ -78,7 +80,7 @@ class MaintainanceHistory(Base):
         logger.info(
             f"Sucessfully given device with mac address {device_to_repair_mac_address} to repair")
         return 'Sucessfully Given For Repair'
-    
+
     @classmethod
     def update(cls, **kwargs):
         mac_address = kwargs['mac_address']
@@ -86,19 +88,19 @@ class MaintainanceHistory(Base):
         returned_device = Device.from_mac_address(mac_address)
         if not returned_device:
             raise HTTPException(
-                status_code= 404,
-                detail= response(error={
+                status_code=404,
+                detail=response(error={
                     'error_type': constant_messages.REQUEST_NOT_FOUND,
                     'error_message': constant_messages.request_not_found('device', 'mac_address')
                 })
             )
         device_id = returned_device.id
         record_to_update = session.scalar(Select(cls). where(
-            cls.device_id== device_id,
+            cls.device_id == device_id,
             cls.returned_from_repair == None))
         for key, values in kwargs.items():
             if values is not None:
-                setattr(record_to_update,key,values)
+                setattr(record_to_update, key, values)
         # returned_device = Device.from_id(device_id)
         user_object = User.from_id(record_to_update.user_id)
         returned_device.user = user_object
@@ -123,7 +125,8 @@ class User(Base):
     creation_date = mapped_column(
         DateTime, default=datetime.datetime.now(tz=datetime.UTC))
     allow_notification: Mapped[bool] = mapped_column(default=True)
-    designation: Mapped[Designation] = mapped_column(default=Designation.VIEWER)
+    designation: Mapped[Designation] = mapped_column(
+        default=Designation.VIEWER)
     deleted: Mapped[bool] = mapped_column(default=False)
     deleted_at = mapped_column(DateTime, nullable=True)
     role_id = relationship('Role', back_populates='user_id',
@@ -149,8 +152,7 @@ class User(Base):
                 role = Role.from_name(role_given)
                 if role:
                     user_to_add.role_id.append(role)
-                
-        
+
         role = Role.from_name('Viewer')
         user_to_add.role_id.append(role)
         session.add(user_to_add)
@@ -159,11 +161,11 @@ class User(Base):
             msg=f'User with username {user_to_add.full_name} Added Sucesully')
         return response(
             message='User added sucessfully, Please find your tokens below. Please request for a temporary default password to login and change your password. Failing to verify your email will result in permanent deletion of your account in 7 days.',
-            data= {
-                'access_token' : auth.generate_JWT(kwargs['email'])[0],
-                'refresh_token' : auth.generate_JWT(kwargs['email'])[1]
-                }
-                        )
+            data={
+                'access_token': auth.generate_JWT(kwargs['email'])[0],
+                'refresh_token': auth.generate_JWT(kwargs['email'])[1]
+            }
+        )
 
     @classmethod
     def change_default_password(cls, email, **kwargs):
@@ -215,33 +217,33 @@ class User(Base):
         try_session_commit(session)
         logger.info(msg=f'{user_to_update.full_name} updated Sucessful')
         return 'Update Sucessful'
-    
+
     @classmethod
-    def current_device(cls,token:str):
+    def current_device(cls, token: str):
         try:
             # user_email=auth.decodAccessJWT(token)
-            email=token['user_identifier']
+            email = token['user_identifier']
             if not email:
-                return{"message":"Authentication failed .please check your token !"}
-            user= session.scalar(Select(cls).where(cls.email==email))
+                return {"message": "Authentication failed .please check your token !"}
+            user = session.scalar(Select(cls).where(cls.email == email))
             if not user:
                 raise HTTPException(status_code=404, detail={
                     "message": "",
                     "error": "User not found. Please check the email address.",
                     "data": "",
                 })
-            
+
             devices = user.devices
             if not devices:
-                raise HTTPException(status_code=404, detail="Device not found. Please check the MAC address.")
-            
+                raise HTTPException(
+                    status_code=404, detail="Device not found. Please check the MAC address.")
+
             return devices
-        
+
         except Exception as e:
             print(f"An error occurred: {e}")
-            raise HTTPException(status_code=500, detail="An unexpected error occurred. Please try again later.")
-        
-    
+            raise HTTPException(
+                status_code=500, detail="An unexpected error occurred. Please try again later.")
 
     @classmethod
     def delete(cls, **args):
@@ -257,7 +259,8 @@ class User(Base):
     def get_all(cls, skip, limit):
         statement = Select(cls).where(
             cls.deleted == False).offset(skip).limit(limit)
-        count = session.scalar(Select(func.count()).select_from(cls).where(cls.deleted == False))
+        count = session.scalar(Select(func.count()).select_from(
+            cls).where(cls.deleted == False))
         return session.scalars(statement).all(), count
 
     @classmethod
@@ -471,7 +474,7 @@ class DeviceRequestRecord(Base):
             cls.device_id == device_id,
             cls.user_id == returned_user.id,
             cls.returned_date == None
-            ))
+        ))
         if record_to_update:
             record_to_update.returned_date = datetime.datetime.now(
                 tz=datetime.UTC)
@@ -497,7 +500,7 @@ class DeviceRequestRecord(Base):
 class Device(Base):
     __tablename__ = 'device'
     id: Mapped[int] = mapped_column(primary_key=True)
-    mac_address:Mapped[str] = mapped_column(nullable=False, unique=True)
+    mac_address: Mapped[str] = mapped_column(nullable=False, unique=True)
     name: Mapped[str] = mapped_column(nullable=False)
     brand: Mapped[str] = mapped_column(nullable=False)
     price: Mapped[float] = mapped_column(nullable=False)
@@ -565,7 +568,7 @@ class Device(Base):
     @classmethod
     def from_id(cls, id):
         return session.scalar(Select(cls).where(cls.id == id))
-    
+
     @classmethod
     def from_mac_address(cls, mac_address):
         return session.scalar(Select(cls).where(cls.mac_address == mac_address))
@@ -579,7 +582,7 @@ class Device(Base):
             cls.available == True,
             cls.deleted == False
         ))
-        result =  session.scalars(statement).all()
+        result = session.scalars(statement).all()
         return result, count
 
     @classmethod

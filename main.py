@@ -88,7 +88,7 @@ async def get_new_accessToken(refreshToken: RefreshTokenModel):
 @app.get("/user/current_device", tags=['Device'])
 async def current_device(token: str = Depends(auth.validate_token)):
     current_device = User.current_device(token)
-    return response(data = current_device)
+    return response(data=current_device)
 
 
 @app.get('/devices', tags=['Device'], dependencies=[Depends(PermissionChecker('view_device'))])
