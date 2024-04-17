@@ -1,4 +1,6 @@
 from fastapi import Depends, HTTPException
+from utils import constant_messages
+from utils.helper_function import error_response
 from . import auth
 from models import Role
 
@@ -15,5 +17,9 @@ class PermissionChecker:
         if not is_permitted:
             raise HTTPException(
                 status_code=403,
-                detail="Not enough permissions to access this resource")
+                detail=error_response(
+                    error={
+                        'error_type': constant_messages.FORBIDDEN,
+                        'error_message': "Not enough permissions to access this resource"
+                        }))
         return user

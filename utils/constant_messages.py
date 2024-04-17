@@ -1,5 +1,5 @@
 INTERNAL_ERROR = "Internal Error"
-INTERNAL_ERROR_MESSAGE = "Please check your request"
+INTERNAL_ERROR_MESSAGE = "An unexpected error occurred. Please try again later."
 TOKEN_VERIFICATION_FAILED = "Couldn't Verify Token, Invalid or expired token"
 INVALID_TOKEN_SCHEME = "Invalid Token Scheme!"
 NO_TOKEN_IN_HEADER = "No token available!"
@@ -21,7 +21,7 @@ INTEGERITYERROR_MESSAGE = 'Can\'t compute your request. Duplicate value'
 DELETIONERROR = 'Can\'t Delete'
 DELETED_ERROR = 'Object Deleted'
 DELETED_ERROR_MESSAGE = 'The Object you have requested for is deleted, please select other.'
-
+EXPIRED_TOKEN = "Expired token"
 
 def deletionerror(name:str):
     return f"Can't delete this {name}, it might be already be in use or in repair."

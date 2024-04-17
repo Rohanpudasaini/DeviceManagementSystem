@@ -1,10 +1,8 @@
-from fastapi import HTTPException, Query
-from fastapi.responses import RedirectResponse
+from fastapi import HTTPException
 from sqlalchemy import DateTime, ForeignKey, Integer, ARRAY, String, Select, func
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, mapped_column, Mapped, relationship
 from sqlalchemy.ext.hybrid import hybrid_property
-from utils.helper_function import check_for_null_or_deleted, generate_password
+from utils.helper_function import check_for_null_or_deleted, generate_password, normal_response, error_response
 from utils.schema import Designation, DeviceStatus, DeviceType, Purpose
 import datetime
 from typing import Optional
@@ -34,32 +32,38 @@ class MaintainanceHistory(Base):
     returned_from_repair = mapped_column(DateTime)
 
     @classmethod
-    def add(cls, **kwargs):
-        user_email = kwargs["email"]
-        kwargs.pop("user_id")
-        device_to_repair_mac_address = kwargs["mac_address"]
-        kwargs.pop("mac_address")
+    def add(cls, email, **kwargs):
+        user_email = email
+        device_to_repair_mac_address = kwargs['mac_address']
+        kwargs.pop('mac_address')
         logger.info(
-            f"User with email {user_email} have requested to \
-        maintain device with mac address {device_to_repair_mac_address}."
-        )
-        device_to_repair = Device.from_mac_address(device_to_repair_mac_address)
+            f"User with email {user_email} have requested to repair device with mac address {device_to_repair_mac_address}.")
+        device_to_repair = Device.from_mac_address(
+            device_to_repair_mac_address)
         user = User.from_email(user_email)
-        if not user and device_to_repair:
+        if not user or not device_to_repair:
+            if not device_to_repair.available:
+                raise HTTPException(
+                    status_code=404,
+                    detail=error_response(error={
+                        'error_type': constant_messages.REQUEST_NOT_FOUND,
+                        'error_message': constant_messages.request_not_found(
+                            'device',
+                            'mac address, as it is flagged as not available'
+                        )
+                    })
+                )
             logger.error(
-                f"Can't find user with email {user_email} \
-                or the device with mac address {device_to_repair_mac_address} found"
-            )
+                f"Can't find user with email {user_email} or the device with mac address {device_to_repair_mac_address}")
             raise HTTPException(
                 status_code=404,
-                detail={
-                    "error": {
-                        "error_type": constant_messages.REQUEST_NOT_FOUND,
-                        "error_message": constant_messages.request_not_found(
-                            "users or device", "email or mac address"
-                        ),
-                    }
-                },
+                detail=error_response(error={
+                    'error_type': constant_messages.REQUEST_NOT_FOUND,
+                    'error_message': constant_messages.request_not_found(
+                        'users or device',
+                        'email or mac address'
+                    )
+                })
             )
         kwargs["devices"] = device_to_repair
         kwargs["reported_by"] = user
@@ -73,21 +77,26 @@ class MaintainanceHistory(Base):
         session.add(device_to_repair)
         try_session_commit(session)
         logger.info(
-            f"Sucessfully given device with mac address {device_to_repair_mac_address} to repair"
-        )
-        return "Sucessfully Given For Repair"
+            f"Sucessfully given device with mac address {device_to_repair_mac_address} to repair")
+        return 'Sucessfully Given For Repair'
 
     @classmethod
     def update(cls, **kwargs):
         mac_address = kwargs["mac_address"]
         kwargs.pop("mac_address")
         returned_device = Device.from_mac_address(mac_address)
-        device_id = returned_device.id
-        record_to_update = session.scalar(
-            Select(cls).where(
-                cls.device_id == device_id, cls.returned_from_repair == None
+        if not returned_device:
+            raise HTTPException(
+                status_code=404,
+                detail=error_response(error={
+                    'error_type': constant_messages.REQUEST_NOT_FOUND,
+                    'error_message': constant_messages.request_not_found('device', 'mac_address')
+                })
             )
-        )
+        device_id = returned_device.id
+        record_to_update = session.scalar(Select(cls). where(
+            cls.device_id == device_id,
+            cls.returned_from_repair == None))
         for key, values in kwargs.items():
             if values is not None:
                 setattr(record_to_update, key, values)
@@ -116,7 +125,8 @@ class User(Base):
         DateTime, default=datetime.datetime.now(tz=datetime.UTC)
     )
     allow_notification: Mapped[bool] = mapped_column(default=True)
-    designation: Mapped[Designation] = mapped_column(default=Designation.VIEWER)
+    designation: Mapped[Designation] = mapped_column(
+        default=Designation.VIEWER)
     deleted: Mapped[bool] = mapped_column(default=False)
     deleted_at = mapped_column(DateTime, nullable=True)
     role_id = relationship(
@@ -133,9 +143,10 @@ class User(Base):
     def add(cls, **kwargs):
         # username, email, password, message
         password = generate_password(12)
-        kwargs["password"] = auth.hash_password(password)
-        role_to_add = kwargs.get("role")
-        kwargs.pop("role")
+        # kwargs['password'] = auth.hash_password(password)
+        kwargs['password'] = password
+        role_to_add = kwargs.get('role')
+        kwargs.pop('role')
         user_to_add = cls(**kwargs)
         if role_to_add:
             for role_given in role_to_add:
@@ -143,37 +154,48 @@ class User(Base):
                 if role:
                     user_to_add.role_id.append(role)
 
-        role = Role.from_name("Viewer")
+        role = Role.from_name('Viewer')
         user_to_add.role_id.append(role)
         session.add(user_to_add)
         try_session_commit(session)
-        logger.info(msg=f"User with username {user_to_add.full_name} Added Sucesully")
-        return (
-            user_to_add.full_name,
-            user_to_add.email,
-            password,
-            "User Added Sucesully, please login using the password provided in your mail",
+        logger.info(
+            msg=f'User with username {user_to_add.full_name} Added Sucesully')
+        return normal_response(
+            message='User added sucessfully, Please find your tokens below. Please request for a temporary default password to login and change your password. Failing to verify your email will result in permanent deletion of your account in 7 days.',
+            data={
+                'access_token': auth.generate_JWT(kwargs['email'])[0],
+                'refresh_token': auth.generate_JWT(kwargs['email'])[1]
+            }
         )
 
     @classmethod
-    def change_password(cls, email, **kwargs):
+    def change_default_password(cls, email, **kwargs):
         user_to_update = cls.from_email(email)
-        if auth.verify_password(kwargs["new_password"], user_to_update.password):
+        if kwargs['new_password'] == user_to_update.password:
             logger.warning("Same password as old password")
             raise HTTPException(
                 status_code=409,
                 detail={
-                    "error_type": "Same Password",
-                    "error_message": "New password same as old password",
-                },
+                    'error_type': 'Same Password',
+                    'error_message': "New password same as old password"
+                }
             )
-        if auth.verify_password(kwargs["old_password"], user_to_update.password):
-            user_to_update.password = auth.hash_password(kwargs["new_password"])
+        if kwargs['old_password'] == user_to_update.password:
+            user_to_update.password = auth.hash_password(
+                kwargs['new_password'])
             user_to_update.default_password = False
             session.add(user_to_update)
             try_session_commit(session)
             logger.info("Password Changed Sucesfully")
             return "Password Changed Sucesfully, Enjoy your account"
+        
+        raise HTTPException(
+            status_code=401,
+            detail= error_response(error={
+                "error_type": constant_messages.UNAUTHORIZED,
+                "error_message": constant_messages.UNAUTHORIZED_MESSAGE
+            })
+        )
 
     @classmethod
     def update(cls, **kwargs):
@@ -202,45 +224,52 @@ class User(Base):
                 setattr(user_to_update, key, value)
         session.add(user_to_update)
         try_session_commit(session)
-        logger.info(msg=f"{user_to_update.full_name} updated Sucessful")
-        return "Update Sucessful"
+        logger.info(msg=f'{user_to_update.full_name} updated Sucessful')
+        return 'Update Sucessful'
 
     @classmethod
     def current_device(cls, token: str):
         try:
-            user_email = auth.decodAccessJWT(token)
-            email = user_email["user_identifier"]
-            if not user_email:
-                return {"message": "Authentication failed .please check your token !"}
-
-            user = session.query(User).filter(User.email == email).first()
-
+            # user_email=auth.decodAccessJWT(token)
+            email = token['user_identifier']
+            if not email:
+                return normal_response(message ="Authentication failed .please check your token !")
+            user = session.scalar(Select(cls).where(cls.email == email))
             if not user:
-                raise HTTPException(
-                    status_code=404,
-                    detail="User not found. Please check the email address.",
-                )
+                raise HTTPException(status_code=404, detail=error_response(error={
+                    "error_type": constant_messages.REQUEST_NOT_FOUND,
+                    "error_message": constant_messages.request_not_found('user', "email")
+                }))
 
-            devices = session.query(cls.devices).filter(cls.email == email).all()
+            devices = user.devices
             if not devices:
                 raise HTTPException(
-                    status_code=404,
-                    detail="Device not found. Please check the MAC address.",
-                )
+                    status_code=404, 
+                    detail=error_response(
+                        error=
+                        {
+                            "error_type": constant_messages.REQUEST_NOT_FOUND,
+                            "error_message":constant_messages.request_not_found('device', "MAC address")
+                        }))
 
             return devices
 
         except Exception as e:
             print(f"An error occurred: {e}")
             raise HTTPException(
-                status_code=500,
-                detail="An unexpected error occurred. Please try again later.",
-            )
+                status_code=500, 
+                detail=error_response(
+                    error={
+                        "error_type": constant_messages.INTERNAL_ERROR,
+                        "error_message": constant_messages.INTERNAL_ERROR_MESSAGE
+                        }
+                    ))
+
 
     @classmethod
     def current_devices_by_user_id(cls, user_id):
 
-        user = session.query(cls).filter(cls.id == user_id).first()
+        user = session.scalar(Select(cls).filter(cls.id == user_id))
 
         if not user:
             raise HTTPException(status_code=404, detail="user not found !")
@@ -265,10 +294,10 @@ class User(Base):
 
     @classmethod
     def get_all(cls, skip, limit):
-        statement = Select(cls).where(cls.deleted == False).offset(skip).limit(limit)
-        count = session.scalar(
-            Select(func.count()).select_from(cls).where(cls.deleted == False)
-        )
+        statement = Select(cls).where(
+            cls.deleted == False).offset(skip).limit(limit)
+        count = session.scalar(Select(func.count()).select_from(
+            cls).where(cls.deleted == False))
         return session.scalars(statement).all(), count
 
     @classmethod
@@ -286,15 +315,17 @@ class User(Base):
             access_token, refresh_token = auth.generate_JWT(email=user_object.email)
             if not user_object.default_password:
                 logger.info("Login Sucessfull")
-                return {
-                    "access_token": access_token,
-                    "refresh_token": refresh_token,
-                    "fullname": user_object.full_name,
-                    "profile_pic_url": user_object.profile_pic_url,
-                    "role": user_object.role_id.all(),
-                }
+                return normal_response(
+                    message='Login Sucessfull',
+                    data={
+                        'access_token': access_token,
+                        'refresh_token': refresh_token,
+                        'fullname': user_object.full_name,
+                        'profile_pic_url': user_object.profile_pic_url,
+                        'role': user_object.role_id.all()
+                    })
             logger.warning("Default password, redirection to change password")
-            return RedirectResponse("/change_password")
+            return normal_response(message="Defauls password used to login, please change password")
         logger.error("Invalid Credentials")
         raise HTTPException(status_code=401, detail="Invalid Credentials")
 
@@ -337,7 +368,11 @@ class DeviceRequestRecord(Base):
             device_id = device_to_allot.id
         else:
             return HTTPException(
-                status_code=404, detail="No device with that mac address"
+                status_code=404,
+                detail=error_response(error={
+                    "error_type": constant_messages.REQUEST_NOT_FOUND,
+                    "error_message" : constant_messages.request_not_found('device','mac address')
+                    })
             )
         logger.info(
             f"Trying to allot a device with device id {device_id} to user \
@@ -348,44 +383,37 @@ class DeviceRequestRecord(Base):
             logger.error(f"Can't find the device with deviceid {device_id}")
             raise HTTPException(
                 status_code=404,
-                detail={
-                    "error": {
-                        "error_type": constant_messages.REQUEST_NOT_FOUND,
-                        "error_message": constant_messages.request_not_found(
-                            "device", "device id"
-                        ),
-                    }
-                },
-            )
+                detail=error_response( error={
+                        'error_type': constant_messages.REQUEST_NOT_FOUND,
+                        'error_message': constant_messages.request_not_found(
+                            'device',
+                            'device id')
+                    }))
         requested_user = User.from_email(user_email)
         if not requested_user:
             logger.error(f"Can't find the user with email {user_email}")
             raise HTTPException(
                 status_code=404,
-                detail={
-                    "error": {
-                        "error_type": constant_messages.REQUEST_NOT_FOUND,
-                        "error_message": constant_messages.request_not_found(
-                            "user", "user id"
-                        ),
+                detail=error_response(error={
+                        'error_type': constant_messages.REQUEST_NOT_FOUND,
+                        'error_message': constant_messages.request_not_found(
+                            'user',
+                            'user id')
                     }
-                },
-            )
+            ))
         if not device_to_allot.deleted:
             if device_to_allot.available:
                 if device_to_allot.status.value != "active":
                     logger.error("The device with device id {device_id} is not active")
                     raise HTTPException(
                         status_code=404,
-                        detail={
-                            "error": {
-                                "error_type": constant_messages.REQUEST_NOT_FOUND,
-                                "error_message": constant_messages.request_not_found(
-                                    "device", "device id"
-                                ),
+                        detail=error_response(error={
+                                'error_type': constant_messages.REQUEST_NOT_FOUND,
+                                'error_message': constant_messages.request_not_found(
+                                    'device',
+                                    'device id')
                             }
-                        },
-                    )
+                    ))
                 device_to_allot.user = requested_user
                 session.add(device_to_allot)
                 try_session_commit(session)
@@ -405,25 +433,19 @@ class DeviceRequestRecord(Base):
             logger.error("The device is no longer available")
             raise HTTPException(
                 status_code=409,
-                detail={
-                    "error": {
-                        "error_type": constant_messages.INSUFFICIENT_RESOURCES,
-                        "error_message": constant_messages.insufficient_resources(
-                            "device"
-                        ),
+                detail=error_response(error={
+                        'error_type': constant_messages.INSUFFICIENT_RESOURCES,
+                        'error_message': constant_messages.insufficient_resources('device')
                     }
-                },
-            )
+            ))
         logger.error(f"Device with device id {device_id} is already deleted")
         raise HTTPException(
             status_code=404,
-            detail={
-                "error": {
-                    "error_type": constant_messages.DELETED_ERROR,
-                    "error_message": constant_messages.DELETED_ERROR_MESSAGE,
+            detail=error_response(error={
+                    'error_type': constant_messages.DELETED_ERROR,
+                    'error_message': constant_messages.DELETED_ERROR_MESSAGE
                 }
-            },
-        )
+        ))
 
     @classmethod
     def return_device(cls, user_email, mac_address):
@@ -431,8 +453,12 @@ class DeviceRequestRecord(Base):
         if device_id:
             device_id = device_id.id
         else:
-            return HTTPException(
-                status_code=404, detail="No device with that mac address"
+            raise HTTPException(
+                status_code=404,
+                detail=error_response(error={
+                    'error_type': constant_messages.REQUEST_NOT_FOUND,
+                    'error_message': constant_messages.request_not_found('device', 'mac address')
+                })
             )
         logger.info(
             f"Trying to return device with id {device_id} by user with id {user_email}"
@@ -442,40 +468,37 @@ class DeviceRequestRecord(Base):
             logger.error("Device not found")
             raise HTTPException(
                 status_code=404,
-                detail={
-                    "error": {
-                        "error_type": constant_messages.REQUEST_NOT_FOUND,
-                        "error_message": constant_messages.request_not_found(
-                            "device", "device id"
-                        ),
+                detail=error_response(error={
+                        'error_type': constant_messages.REQUEST_NOT_FOUND,
+                        'error_message': constant_messages.request_not_found(
+                            'device',
+                            'device id'
+                        )
                     }
-                },
+                )
             )
         returned_user = User.from_email(user_email)
         if not returned_user:
             logger.error("User not found")
             raise HTTPException(
                 status_code=404,
-                detail={
-                    "error": {
-                        "error_type": constant_messages.REQUEST_NOT_FOUND,
-                        "error_message": constant_messages.request_not_found(
-                            "user", "email"
-                        ),
+                detail=error_response(error={
+                        'error_type': constant_messages.REQUEST_NOT_FOUND,
+                        'error_message': constant_messages.request_not_found(
+                            'user',
+                            'email')
                     }
-                },
+                )
             )
         device_to_return.user = None
         device_to_return.available = True
         session.add(device_to_return)
         try_session_commit(session)
-        record_to_update = session.scalar(
-            Select(cls).where(
-                cls.device_id == device_id,
-                cls.user_id == returned_user.id,
-                cls.returned_date == None,
-            )
-        )
+        record_to_update = session.scalar(Select(cls).where(
+            cls.device_id == device_id,
+            cls.user_id == returned_user.id,
+            cls.returned_date == None
+        ))
         if record_to_update:
             record_to_update.returned_date = datetime.datetime.now(tz=datetime.UTC)
             session.add(record_to_update)
@@ -487,14 +510,13 @@ class DeviceRequestRecord(Base):
         )
         raise HTTPException(
             status_code=404,
-            detail={
-                "error": {
-                    "error_type": constant_messages.REQUEST_NOT_FOUND,
-                    "error_message": constant_messages.request_not_found(
-                        "Request Record", "user id or device id or is already returned"
-                    ),
+            detail=error_response(error={
+                    'error_type': constant_messages.REQUEST_NOT_FOUND,
+                    'error_message': constant_messages.request_not_found(
+                        'Request Record',
+                        'user id or device id or is already returned')
                 }
-            },
+            )
         )
 
 
@@ -538,12 +560,11 @@ class Device(Base):
             logger.error("The device is already deleted")
             raise HTTPException(
                 status_code=404,
-                detail={
-                    "error": {
-                        "error_type": constant_messages.DELETED_ERROR,
-                        "error_message": constant_messages.DELETED_ERROR_MESSAGE,
+                detail=error_response(error={
+                        'error_type': constant_messages.DELETED_ERROR,
+                        'error_message': constant_messages.DELETED_ERROR_MESSAGE
                     }
-                },
+                )
             )
         for key, value in kwargs.items():
             if value:
@@ -608,17 +629,13 @@ class Device(Base):
 
     @classmethod
     def get_all(cls, skip, limit):
-        statement = (
-            Select(cls)
-            .where(cls.available == True, cls.deleted == False)
-            .offset(skip)
-            .limit(limit)
-        )
-        count = session.scalar(
-            Select(func.count())
-            .select_from(cls)
-            .where(cls.available == True, cls.deleted == False)
-        )
+        statement = Select(cls).where(
+            cls.available == True,
+            cls.deleted == False).offset(skip).limit(limit)
+        count = session.scalar(Select(func.count()).select_from(cls).where(
+            cls.available == True,
+            cls.deleted == False
+        ))
         result = session.scalars(statement).all()
         return result, count
 

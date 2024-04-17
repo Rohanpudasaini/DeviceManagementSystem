@@ -6,7 +6,7 @@ from utils import constant_messages
 from utils.logger import logger
 from utils import send_mail
 import os
-from utils.helper_function import check_for_null_or_deleted, log_request
+from utils.helper_function import check_for_null_or_deleted, log_request, normal_response
 from utils.schema import (
     ChangePasswordModel,
     DeviceAddModel,
@@ -53,56 +53,25 @@ async def login(loginModel: LoginModel):
 
 @app.post(
     '/add_user',
-    status_code= 201,
+    status_code=201,
     tags=['Authentication'],
     dependencies=[Depends(PermissionChecker('create_user'))]
-    )
+)
 async def add_user(
     userAddModel: UserAddModel,
-    request: Request,
-    backgroundTasks: BackgroundTasks
-    ):
+    request: Request
+):
     await log_request(request)
-    username, email, password, message = User.add(**userAddModel.model_dump())
-    backgroundTasks.add_task(
-        send_mail.welcome_mail,
-        email_to_send_to=email,
-        username=username,
-        password=password)
-    return message
+    return User.add(**userAddModel.model_dump())
 
 
-@app.post('/change_password', tags=['Authentication'])
-def change_password(loginModel: LoginModel):
-    is_valid, _ = User.verify_credential(**loginModel.model_dump())
-    if is_valid:
-        access_token, _ = auth.generate_JWT(email=loginModel.email)
-        return {
-            'Redirect': 'You are redirectd as you are using the default password',
-            "Redirect_message": "Please Send Patch method to '/change_password' with new password and your token in header.",
-            'access_token': access_token
-        }
-    raise HTTPException(
-        status_code=401,
-        detail={
-            'error_type': "Authenticatin failed",
-            'error_message': "Please provide valid credentials"
-        }
-    )
-
-
-@app.patch('/change_password', tags=['Authentication'])
-def update_password(changePasswordModel: ChangePasswordModel, token=Depends(auth.validate_token)):
-    return User.change_password(email=token.get("user_identifier"), **changePasswordModel.model_dump())
-
-
-@app.post('/refresh', tags=['Authentication'],status_code= 201)
+@app.post('/refresh', tags=['Authentication'], status_code=201)
 async def get_new_accessToken(refreshToken: RefreshTokenModel):
     token = auth.decodRefreshJWT(refreshToken.token)
     if token:
-        return {
+        return normal_response(data={
             'access_token': token
-        }
+        })
     raise HTTPException(
         status_code=401,
         detail={
@@ -112,22 +81,19 @@ async def get_new_accessToken(refreshToken: RefreshTokenModel):
             }
         }
     )
-    
-    #latest update code  
-@app.get("/user/current_device",tags=['Device'])
-async def current_device(token:str=Depends(auth.validate_token)):
-    current_device=User.current_device(token)
-    return current_device
 
+    # latest update code
+
+
+@app.get("/user/current_device", tags=['Device'])
+async def current_device(token: str = Depends(auth.validate_token)):
+    current_device = User.current_device(token)
+    return normal_response(data=current_device)
 
 @app.get("/user/{id}/current_device",tags=['User'])
 async def current_devices_user_id(id):
     current_devices=User.current_devices_by_user_id(id)
     return current_devices
-
-    
-    
-
 
 @app.get('/devices', tags=['Device'], dependencies=[Depends(PermissionChecker('view_device'))])
 async def get_all_device(
@@ -138,28 +104,30 @@ async def get_all_device(
     await log_request(request)
     result, count = Device.get_all(skip=skip, limit=limit)
     logger.info([singleresult.__dict__ for singleresult in result])
-    return result, {'total': count,
-                    'skip':skip,
-                    'limit':limit
-                    }
+    return normal_response(data=[{
+        'total': count,
+        'skip': skip,
+        'limit': limit
+    }, result
+    ])
 
 
-@app.post('/devices', tags=['Device'], status_code= 201, dependencies=[Depends(PermissionChecker('create_device'))])
+@app.post('/devices', tags=['Device'], status_code=201, dependencies=[Depends(PermissionChecker('create_device'))])
 async def add_device(deviceAddModel: DeviceAddModel, request: Request):
     await log_request(request)
-    return Device.add(**deviceAddModel.model_dump())
+    return normal_response(message=Device.add(**deviceAddModel.model_dump()))
 
 
 @app.patch('/device', tags=['Device'], dependencies=[Depends(PermissionChecker('update_device'))])
 async def update_device(deviceUpdateModel: DeviceUpdateModel, request: Request):
     await log_request(request)
-    return Device.update(**deviceUpdateModel.model_dump())
+    return normal_response(message=Device.update(**deviceUpdateModel.model_dump()))
 
 
 @app.delete('/device', tags=["Device"], dependencies=[Depends(PermissionChecker('delete_device'))])
 async def delete_device(deviceDeleteModel: DeleteModel, request: Request):
     await log_request(request)
-    return Device.delete(**deviceDeleteModel.model_dump())
+    return normal_response(message=Device.delete(**deviceDeleteModel.model_dump()))
 
 
 
@@ -169,86 +137,89 @@ async def search_device(name=None,brand=None):
     return search_devices
 
 
-@app.get('/device/{id}', tags=['Device'], dependencies=[Depends(PermissionChecker('view_device'))])
-async def get_single_device(id: int, request: Request):
-    await log_request(request)
-    device_info = Device.from_id(id)
-    check_for_null_or_deleted(device_info)
-    if device_info:
-        logger.info(device_info.__dict__)
-    else:
-        logger.warning(f"No device with id {id}")
-    return device_info
-
-
 @app.post('/request', tags=['Device'], dependencies=[Depends(PermissionChecker('request_device'))])
 async def request_device(deviceRequestModel: DeviceRequestModel, request: Request, token=Depends(auth.validate_token)):
     await log_request(request)
     email = token.get('user_identifier')
-    return DeviceRequestRecord.allot_to_user(user_email=email, mac_address=deviceRequestModel.mac_address)
+    return normal_response(message=DeviceRequestRecord.allot_to_user(user_email=email, mac_address=deviceRequestModel.mac_address))
 
 
 @app.post('/return', tags=['Device'], dependencies=[Depends(PermissionChecker('request_device'))])
 async def return_device(deviceReturnModel: DeviceRequestModel, request: Request, token=Depends(auth.validate_token)):
     await log_request(request)
     email = token.get('user_identifier')
-    return DeviceRequestRecord.return_device(user_email=email, mac_address=deviceReturnModel.mac_address)
+    return normal_response(message=DeviceRequestRecord.return_device(user_email=email, mac_address=deviceReturnModel.mac_address))
 
 
 @app.post(
-    '/maintainance',
+    '/device/request_maintainance',
     tags=['Device'],
-    status_code= 201,
+    status_code=201,
     dependencies=[Depends(PermissionChecker('request_device'))]
-    )
-async def request_maintainance(deviceMaintainanceModel: DeviceMaintainanceModel):
-    return MaintainanceHistory.add(**deviceMaintainanceModel.model_dump())
+)
+async def request_maintainance(
+    deviceMaintainanceModel: DeviceMaintainanceModel,
+    token=Depends(auth.validate_token)
+):
+    return normal_response(message=MaintainanceHistory.add(
+        email=token.get('user_identifier'),
+        **deviceMaintainanceModel.model_dump()
+    ))
 
 
-@app.patch('/maintainance', tags=['Device'], dependencies=[Depends(PermissionChecker('request_device'))])
-async def return_maintainance(deviceReturn:DeviceReturnFromMaintainanceModel):
-    return MaintainanceHistory.update(**deviceReturn.model_dump())
+@app.patch(
+    '/device/return_maintainance',
+    tags=['Device'],
+    dependencies=[Depends(PermissionChecker('request_device'))]
+)
+async def return_maintainance(deviceReturn: DeviceReturnFromMaintainanceModel):
+    return normal_response(message=MaintainanceHistory.update(**deviceReturn.model_dump()))
+
 
 @app.get('/users', tags=['User'], dependencies=[Depends(PermissionChecker('view_user'))])
 async def get_all_users(
     request: Request,
     skip: int | None = 0,
-    limit: int | None = 20
+    limit: int | None = 20,
+    id: int | None = None
 ):
     await log_request(request)
+    if id:
+        user_info = User.from_id(id)
+        check_for_null_or_deleted(user_info, 'id', 'user')
+        return normal_response(data=user_info)
     result, count = User.get_all(skip=skip, limit=limit)
-    return result, {
+    return normal_response(data=[{
         'total': count,
         'skip': skip,
         'limit': limit
-        
-    }
+    }, result])
 
 
 @app.patch('/users', tags=['User'], dependencies=[Depends(PermissionChecker('update_user'))])
 async def update_user(userUpdateModel: UserUpdateModel, request: Request):
     await log_request(request)
-    return User.update(**userUpdateModel.model_dump())
+    return normal_response(message=User.update(**userUpdateModel.model_dump()))
 
 
 @app.delete('/user', tags=["User"], dependencies=[Depends(PermissionChecker('delete_user'))])
 async def delete_user(userDeleteModel: DeleteModel, request: Request):
     await log_request(request)
-    return User.delete(**userDeleteModel.model_dump())
+    return normal_response(message=User.delete(**userDeleteModel.model_dump()))
 
 
-@app.get('/user/id/{id}', tags=['User'], dependencies=[Depends(PermissionChecker('view_user'))])
-async def get_single_user_from_id(id: int, request: Request):
-    await log_request(request)
-    user_info = User.from_id(id)
-    print(user_info)
-    check_for_null_or_deleted(user_info)
-    return user_info
+@app.post('/user/request_mail', tags=['User'])
+def request_mail(backgroundTasks: BackgroundTasks, token=Depends(auth.validate_token)):
+    email = token['user_identifier']
+    user_object = User.from_email(email)
+    backgroundTasks.add_task(
+        send_mail.welcome_mail,
+        email_to_send_to=email,
+        username=user_object.full_name,
+        password=user_object.password)
+    return normal_response(message="Mail sent sucessfully, please check your registered mail")
 
-@app.get('/user/{email}', tags=['User'], dependencies=[Depends(PermissionChecker('view_user'))])
-async def get_single_user_from_email(email: str, request: Request):
-    await log_request(request)
-    user_info = User.from_email(email)
-    check_for_null_or_deleted(user_info)
-    return user_info
 
+@app.post('/user/change_password', tags=['Authentication'])
+def update_password(changePasswordModel: ChangePasswordModel, token=Depends(auth.validate_token)):
+    return normal_response(message=User.change_default_password(email=token.get("user_identifier"), **changePasswordModel.model_dump()))
