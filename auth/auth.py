@@ -6,6 +6,8 @@ import os
 import bcrypt
 from fastapi import Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from utils.helper_function import error_response
+from utils import constant_messages
 contain_header = HTTPBearer()
 
 ACCESS_SECRET = os.getenv('secret_access')
@@ -15,7 +17,8 @@ ALGORITHM = os.getenv('algorithm')
 def generate_JWT(email:str,):
     payload = {
         'user_identifier':email, 
-        'expiry': time.time() + 1200
+        # 'expiry': time.time() + 1200
+        'expiry': time.time() + 240
         }
     encoded_access = jwt.encode(payload,ACCESS_SECRET,algorithm=ALGORITHM)
     payload = {
@@ -34,13 +37,24 @@ def decodAccessJWT(token:str):
         else:
             raise HTTPException(
                 status_code=401,
-                detail="Expired Token"
+                detail=error_response(
+                    error=
+                    {
+                        'error_type':constant_messages.TOKEN_ERROR,
+                        "error_message": constant_messages.INVALID_TOKEN_SCHEME
+                    }
             )   
-            
+            )
     except JWTError:
         raise HTTPException(
                     status_code=401,
-                    detail="Token Verification failed"
+                    detail=error_response(
+                    error=
+                    {
+                        'error_type':constant_messages.TOKEN_ERROR,
+                        "error_message": constant_messages.TOKEN_VERIFICATION_FAILED
+                    }
+            ) 
                 )    
 
 
@@ -54,13 +68,25 @@ def decodRefreshJWT(token:str):
         else:
             raise HTTPException(
                 status_code=401,
-                detail="Expired Token"
+                detail=error_response(
+                    error=
+                    {
+                        'error_type':constant_messages.TOKEN_ERROR,
+                        "error_message": constant_messages.EXPIRED_TOKEN
+                    }
+            ) 
             )   
     except JWTError:
         raise HTTPException(
                     status_code=401,
                     # detail=
-                    detail='Token verification Failed'
+                    detail=error_response(
+                    error=
+                    {
+                        'error_type':constant_messages.TOKEN_ERROR,
+                        "error_message": constant_messages.TOKEN_VERIFICATION_FAILED
+                    }
+            ) 
                 ) 
 
 
