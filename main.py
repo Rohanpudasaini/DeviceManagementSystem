@@ -49,10 +49,9 @@ app = FastAPI(
 )
 
 api_v1 = FastAPI()
-api_v2=FastAPI()
 templates = Jinja2Templates(directory='templates')
 
-@app.get('/verify_otp')
+@api_v1.get('/verify_otp')
 def verify_otp(token:str, request:Request):
     try:
         token_data = auth.decode_otp_jwt(token)
@@ -67,7 +66,7 @@ def verify_otp(token:str, request:Request):
             context={"token":token}
             )
     
-@app.post('/reset_password')
+@api_v1.post('/reset_password')
 def reset_password(request:Request,token=Form(), new_password=Form(),confirm_password=Form()):
     email = auth.decode_otp_jwt(token)
     email = email['user_identifier']
@@ -79,10 +78,6 @@ def reset_password(request:Request,token=Form(), new_password=Form(),confirm_pas
         )
 
 @api_v1.get("/", tags=["Home"])
-async def home():
-    return "Welcome Home"
-
-@api_v2.get("/", tags=["Home"])
 async def home():
     return "Welcome Home"
 
@@ -108,7 +103,7 @@ async def get_new_accessToken(refreshToken: RefreshTokenModel):
     )
 
 
-@app.post('/forget_password', tags=['Authentication'])
+@api_v1.post('/forget_password', tags=['Authentication'])
 async def forget_password(resetPassword:ResetPasswordModel, backgroundTasks:BackgroundTasks):
     is_user = User.from_email(resetPassword.email)
     if not is_user:
@@ -353,4 +348,3 @@ async def current_devices_user_id(id):
 
 
 app.mount("/v1", api_v1)
-app.mount("/v2", api_v2)
