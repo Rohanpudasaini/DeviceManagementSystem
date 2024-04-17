@@ -49,37 +49,35 @@ app = FastAPI(
 )
 
 api_v1 = FastAPI()
-templates = Jinja2Templates(directory='templates')
+templates = Jinja2Templates(directory="templates")
 
-@api_v1.get('/verify_otp', tags=["Authentication"])
-def verify_otp(token:str, request:Request):
-    try:
-        token_data = auth.decode_otp_jwt(token)
-    except HTTPException:
-        return templates.TemplateResponse(
-            request=request,
-            name='expired.html')
-    if token_data:
-        return templates.TemplateResponse(
-            request=request,
-            name = 'test.html',
-            context={"token":token}
-            )
-
-@api_v1.post('/reset_password', tags=["Authentication"])
-def reset_password(request:Request,token=Form(), new_password=Form(),confirm_password=Form()):
-    email = auth.decode_otp_jwt(token)
-    email = email['user_identifier']
-    result = User.change_password(email,new_password,confirm_password)
-    if result:
-        return templates.TemplateResponse(
-            request = request,
-            name ='sucess.html'
-        )
 
 @api_v1.get("/", tags=["Home"])
 async def home():
     return "Welcome Home"
+
+
+@api_v1.get("/verify_otp", tags=["Authentication"])
+def verify_otp(token: str, request: Request):
+    try:
+        token_data = auth.decode_otp_jwt(token)
+    except HTTPException:
+        return templates.TemplateResponse(request=request, name="expired.html")
+    if token_data:
+        return templates.TemplateResponse(
+            request=request, name="test.html", context={"token": token}
+        )
+
+
+@api_v1.post("/reset_password", tags=["Authentication"])
+def reset_password(
+    request: Request, token=Form(), new_password=Form(), confirm_password=Form()
+):
+    email = auth.decode_otp_jwt(token)
+    email = email["user_identifier"]
+    result = User.change_password(email, new_password, confirm_password)
+    if result:
+        return templates.TemplateResponse(request=request, name="sucess.html")
 
 
 @api_v1.post("/user/login", tags=["Authentication"])
@@ -103,26 +101,30 @@ async def get_new_accessToken(refreshToken: RefreshTokenModel):
     )
 
 
-@api_v1.post('/forget_password', tags=['Authentication'])
-async def forget_password(resetPassword:ResetPasswordModel, backgroundTasks:BackgroundTasks):
+@api_v1.post("/forget_password", tags=["Authentication"])
+async def forget_password(
+    resetPassword: ResetPasswordModel, backgroundTasks: BackgroundTasks
+):
     is_user = User.from_email(resetPassword.email)
     if not is_user:
         raise HTTPException(
-            status_code=404, 
+            status_code=404,
             detail=error_response(
                 error={
                     "error_type": constant_messages.REQUEST_NOT_FOUND,
-                    "error_message": constant_messages.request_not_found('user', "email")
-                }))
+                    "error_message": constant_messages.request_not_found(
+                        "user", "email"
+                    ),
+                }
+            ),
+        )
     backgroundTasks.add_task(
         send_mail.reset_mail,
         email_to_send_to=resetPassword.email,
         username=is_user.full_name,
-        token = auth.generate_otp_JWT(resetPassword.email))
+        token=auth.generate_otp_JWT(resetPassword.email),
+    )
     return normal_response(message="Please check your email for password reset link")
-
-
-
 
 
 @api_v1.get(
@@ -344,7 +346,6 @@ async def current_device(token: str = Depends(auth.validate_token)):
 async def current_devices_user_id(id):
     current_devices = User.current_devices_by_user_id(id)
     return current_devices
-
 
 
 app.mount("/v1", api_v1)
