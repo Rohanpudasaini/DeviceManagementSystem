@@ -69,13 +69,18 @@ async def get_new_accessToken(refreshToken: RefreshTokenModel):
     )
 
 
-@app.get('/devices', tags=['Device'], dependencies=[Depends(PermissionChecker('view_device'))])
+@app.get('/device', tags=['Device'], dependencies=[Depends(PermissionChecker('view_device'))])
 async def get_all_device(
     request: Request,
     skip: int | None = 0,
     limit: int | None = 20,
+    id: int|None = None
 ):
     await log_request(request)
+    if id:
+        user_info = Device.from_id(id)
+        check_for_null_or_deleted(user_info, 'id', 'user')
+        return normal_response(data=user_info)
     result, count = Device.get_all(skip=skip, limit=limit)
     logger.info([singleresult.__dict__ for singleresult in result])
     return normal_response(data=[{
@@ -111,14 +116,14 @@ async def search_device(name=None,brand=None):
     return search_devices
 
 
-@app.post('/request', tags=['Device'], dependencies=[Depends(PermissionChecker('request_device'))])
+@app.post('/device/request', tags=['Device'], dependencies=[Depends(PermissionChecker('request_device'))])
 async def request_device(deviceRequestModel: DeviceRequestModel, request: Request, token=Depends(auth.validate_token)):
     await log_request(request)
     email = token.get('user_identifier')
     return normal_response(message=DeviceRequestRecord.allot_to_user(user_email=email, mac_address=deviceRequestModel.mac_address))
 
 
-@app.post('/return', tags=['Device'], dependencies=[Depends(PermissionChecker('request_device'))])
+@app.post('/device/return', tags=['Device'], dependencies=[Depends(PermissionChecker('request_device'))])
 async def return_device(deviceReturnModel: DeviceRequestModel, request: Request, token=Depends(auth.validate_token)):
     await log_request(request)
     email = token.get('user_identifier')
