@@ -90,6 +90,10 @@ async def current_device(token: str = Depends(auth.validate_token)):
     current_device = User.current_device(token)
     return normal_response(data=current_device)
 
+@app.get("/user/{id}/current_device",tags=['User'])
+async def current_devices_user_id(id):
+    current_devices=User.current_devices_by_user_id(id)
+    return current_devices
 
 @app.get('/devices', tags=['Device'], dependencies=[Depends(PermissionChecker('view_device'))])
 async def get_all_device(
@@ -114,7 +118,7 @@ async def add_device(deviceAddModel: DeviceAddModel, request: Request):
     return normal_response(message=Device.add(**deviceAddModel.model_dump()))
 
 
-@app.patch('/devices', tags=['Device'], dependencies=[Depends(PermissionChecker('update_device'))])
+@app.patch('/device', tags=['Device'], dependencies=[Depends(PermissionChecker('update_device'))])
 async def update_device(deviceUpdateModel: DeviceUpdateModel, request: Request):
     await log_request(request)
     return normal_response(message=Device.update(**deviceUpdateModel.model_dump()))
@@ -126,12 +130,11 @@ async def delete_device(deviceDeleteModel: DeleteModel, request: Request):
     return normal_response(message=Device.delete(**deviceDeleteModel.model_dump()))
 
 
-@app.get('/devices/', tags=['Device'], dependencies=[Depends(PermissionChecker('view_device'))])
-async def search_device(request: Request, name=None, brand=None):
-    await log_request(request)
-    if not name and not brand:
-        return "Please provide Search Query"
-    return Device.search(name, brand)
+
+@app.get('/device/search',tags=['Device'], dependencies=[Depends(PermissionChecker('view_device'))])
+async def search_device(name=None,brand=None):
+    search_devices=Device.search_device(name,brand)
+    return search_devices
 
 
 @app.post('/request', tags=['Device'], dependencies=[Depends(PermissionChecker('request_device'))])
