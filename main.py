@@ -51,20 +51,6 @@ async def login(loginModel: LoginModel):
     return User.login(**loginModel.model_dump())
 
 
-@app.post(
-    '/add_user',
-    status_code=201,
-    tags=['Authentication'],
-    dependencies=[Depends(PermissionChecker('create_user'))]
-)
-async def add_user(
-    userAddModel: UserAddModel,
-    request: Request
-):
-    await log_request(request)
-    return User.add(**userAddModel.model_dump())
-
-
 @app.post('/refresh', tags=['Authentication'], status_code=201)
 async def get_new_accessToken(refreshToken: RefreshTokenModel):
     token = auth.decodRefreshJWT(refreshToken.token)
@@ -82,18 +68,6 @@ async def get_new_accessToken(refreshToken: RefreshTokenModel):
         }
     )
 
-    # latest update code
-
-
-@app.get("/user/current_device", tags=['Device'])
-async def current_device(token: str = Depends(auth.validate_token)):
-    current_device = User.current_device(token)
-    return normal_response(data=current_device)
-
-@app.get("/user/{id}/current_device",tags=['User'])
-async def current_devices_user_id(id):
-    current_devices=User.current_devices_by_user_id(id)
-    return current_devices
 
 @app.get('/devices', tags=['Device'], dependencies=[Depends(PermissionChecker('view_device'))])
 async def get_all_device(
@@ -112,7 +86,7 @@ async def get_all_device(
     ])
 
 
-@app.post('/devices', tags=['Device'], status_code=201, dependencies=[Depends(PermissionChecker('create_device'))])
+@app.post('/device', tags=['Device'], status_code=201, dependencies=[Depends(PermissionChecker('create_device'))])
 async def add_device(deviceAddModel: DeviceAddModel, request: Request):
     await log_request(request)
     return normal_response(message=Device.add(**deviceAddModel.model_dump()))
@@ -176,7 +150,7 @@ async def return_maintainance(deviceReturn: DeviceReturnFromMaintainanceModel):
     return normal_response(message=MaintainanceHistory.update(**deviceReturn.model_dump()))
 
 
-@app.get('/users', tags=['User'], dependencies=[Depends(PermissionChecker('view_user'))])
+@app.get('/user', tags=['User'], dependencies=[Depends(PermissionChecker('view_user'))])
 async def get_all_users(
     request: Request,
     skip: int | None = 0,
@@ -194,9 +168,23 @@ async def get_all_users(
         'skip': skip,
         'limit': limit
     }, result])
+    
+
+@app.post(
+    '/user',
+    status_code=201,
+    tags=['User'],
+    dependencies=[Depends(PermissionChecker('create_user'))]
+)
+async def add_user(
+    userAddModel: UserAddModel,
+    request: Request
+):
+    await log_request(request)
+    return User.add(**userAddModel.model_dump())
 
 
-@app.patch('/users', tags=['User'], dependencies=[Depends(PermissionChecker('update_user'))])
+@app.patch('/user', tags=['User'], dependencies=[Depends(PermissionChecker('update_user'))])
 async def update_user(userUpdateModel: UserUpdateModel, request: Request):
     await log_request(request)
     return normal_response(message=User.update(**userUpdateModel.model_dump()))
@@ -206,6 +194,11 @@ async def update_user(userUpdateModel: UserUpdateModel, request: Request):
 async def delete_user(userDeleteModel: DeleteModel, request: Request):
     await log_request(request)
     return normal_response(message=User.delete(**userDeleteModel.model_dump()))
+
+
+@app.get('/user/me', tags=["User"])
+async def my_info(token = Depends(auth.validate_token)):
+    return normal_response(data=User.from_email(token['user_identifier']))
 
 
 @app.post('/user/request_mail', tags=['User'])
@@ -220,6 +213,18 @@ def request_mail(backgroundTasks: BackgroundTasks, token=Depends(auth.validate_t
     return normal_response(message="Mail sent sucessfully, please check your registered mail")
 
 
-@app.post('/user/change_password', tags=['Authentication'])
+@app.post('/user/change_password', tags=['User'])
 def update_password(changePasswordModel: ChangePasswordModel, token=Depends(auth.validate_token)):
     return normal_response(message=User.change_default_password(email=token.get("user_identifier"), **changePasswordModel.model_dump()))
+
+
+@app.get("/user/current_device", tags=['User'])
+async def current_device(token: str = Depends(auth.validate_token)):
+    current_device = User.current_device(token)
+    return normal_response(data=current_device)
+
+
+@app.get("/user/{id}/current_device",tags=['User'], dependencies=[Depends(PermissionChecker('all_access'))])
+async def current_devices_user_id(id):
+    current_devices=User.current_devices_by_user_id(id)
+    return current_devices
