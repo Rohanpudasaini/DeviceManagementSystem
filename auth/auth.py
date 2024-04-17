@@ -95,7 +95,7 @@ def generate_otp_JWT(email:str):
     payload = {
         'user_identifier':email, 
         # 'expiry': time.time() + 1200
-        'expiry': time.time() + 240
+        'expiry': time.time() + 1240
         }
     encoded_otp = jwt.encode(payload,OTP_SECRET,algorithm=ALGORITHM)
     return encoded_otp
@@ -105,7 +105,7 @@ def decode_otp_jwt(token:str):
     try:
         decode_token = jwt.decode(token=token, key=OTP_SECRET,algorithms=ALGORITHM) 
         if decode_token['expiry'] >= time.time():
-            return True
+            return decode_token
         else:
             raise HTTPException(
                 status_code=401,
