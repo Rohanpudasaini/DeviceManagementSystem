@@ -74,7 +74,6 @@ async def add_user(
 
 @app.post('/change_password', tags=['Authentication'])
 def change_password(loginModel: LoginModel):
-    # print(loginModel)
     is_valid, _ = User.verify_credential(**loginModel.model_dump())
     if is_valid:
         access_token, _ = auth.generate_JWT(email=loginModel.email)
@@ -119,6 +118,14 @@ async def get_new_accessToken(refreshToken: RefreshTokenModel):
 async def current_device(token:str=Depends(auth.validate_token)):
     current_device=User.current_device(token)
     return current_device
+
+
+@app.get("/user/{id}/current_device",tags=['User'])
+async def current_devices_user_id(id):
+    current_devices=User.current_devices_by_user_id(id)
+    return current_devices
+
+    
     
 
 
@@ -143,7 +150,7 @@ async def add_device(deviceAddModel: DeviceAddModel, request: Request):
     return Device.add(**deviceAddModel.model_dump())
 
 
-@app.patch('/devices', tags=['Device'], dependencies=[Depends(PermissionChecker('update_device'))])
+@app.patch('/device', tags=['Device'], dependencies=[Depends(PermissionChecker('update_device'))])
 async def update_device(deviceUpdateModel: DeviceUpdateModel, request: Request):
     await log_request(request)
     return Device.update(**deviceUpdateModel.model_dump())
@@ -155,12 +162,11 @@ async def delete_device(deviceDeleteModel: DeleteModel, request: Request):
     return Device.delete(**deviceDeleteModel.model_dump())
 
 
-@app.get('/devices/', tags=['Device'], dependencies=[Depends(PermissionChecker('view_device'))])
-async def search_device(request: Request, name=None, brand=None):
-    await log_request(request)
-    if not name and not brand:
-        return "Please provide Search Query"
-    return Device.search(name, brand)
+
+@app.get('/device/search',tags=['Device'], dependencies=[Depends(PermissionChecker('view_device'))])
+async def search_device(name=None,brand=None):
+    search_devices=Device.search_device(name,brand)
+    return search_devices
 
 
 @app.get('/device/{id}', tags=['Device'], dependencies=[Depends(PermissionChecker('view_device'))])
