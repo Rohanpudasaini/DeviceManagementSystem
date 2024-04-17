@@ -51,7 +51,7 @@ app = FastAPI(
 api_v1 = FastAPI()
 templates = Jinja2Templates(directory='templates')
 
-@api_v1.get('/verify_otp')
+@api_v1.get('/verify_otp', tags=["Authentication"])
 def verify_otp(token:str, request:Request):
     try:
         token_data = auth.decode_otp_jwt(token)
@@ -65,8 +65,8 @@ def verify_otp(token:str, request:Request):
             name = 'test.html',
             context={"token":token}
             )
-    
-@api_v1.post('/reset_password')
+
+@api_v1.post('/reset_password', tags=["Authentication"])
 def reset_password(request:Request,token=Form(), new_password=Form(),confirm_password=Form()):
     email = auth.decode_otp_jwt(token)
     email = email['user_identifier']
