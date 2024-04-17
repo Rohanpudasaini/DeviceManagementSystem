@@ -53,8 +53,8 @@ def get_temp_password_html(username: str, temp_password: str):
 
 
 def get_temp_password_text(username: str, temp_password: str):
-     return f"""
-  Subject: Welcome to Your Device Management System - Account Setup
+    return f"""
+Subject: Welcome to Your Device Management System - Account Setup
 
 Dear {username},
 
@@ -76,7 +76,82 @@ If you encounter any issues or have questions, please reach out to our support t
 Thank you for joining, and we hope you find our system useful for managing your device needs efficiently!
 
 Best Regards,
-Vanilla Tech Device Management Team
+Device Management Team
 
-  
-  """
+"""
+
+def get_reset_password_html(username: str, reset_link: str):
+    html_message = """\
+    <!DOCTYPE html>
+    <html lang="en">
+        <head>
+            <meta charset="UTF-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <title>Password Reset Request</title>
+            <style>
+                body {{
+                    font-family: Arial, sans-serif;
+                    margin: 0;
+                    padding: 0;
+                    background-color: #f4f4f4; /* Light gray background */
+                }}
+                .header {{
+                    background-color: #007bff; /* Bootstrap blue */
+                    color: #ffffff;
+                    padding: 20px;
+                    text-align: center;
+                }}
+                .content {{
+                    padding: 20px;
+                    text-align: center;
+                }}
+                .button {{
+                    display: inline-block;
+                    padding: 10px 20px;
+                    margin-top: 20px;
+                    font-size: 16px;
+                    color: #ffffff;
+                    background-color: #28a745; /* Bootstrap green */
+                    text-decoration: none;
+                    border-radius: 5px;
+                }}
+                .button:hover {{
+                    background-color: #218838;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>Password Reset Instructions</h1>
+            </div>
+            <div class="content">
+                <h2>Hello {username},</h2>
+                <p>You recently requested to reset your password for your account. Please click on the button below to reset your password. This link is valid for 24 hours.</p>
+                <a href="{reset_link}" class="button">Reset Your Password</a>
+                <p>If you did not request a password reset, please ignore this email or contact support if you believe this is an unauthorized attempt to access your account.</p>
+                <p>Thank you for using our system!</p>
+            </div>
+        </body>
+    </html>
+    """
+    return html_message.format(username=username, reset_link=reset_link)
+
+
+def get_reset_otp_html(username: str, reset_link: str):
+    return f"""
+Subject: Password Reset Instructions
+
+Hello {username},
+
+You recently requested to reset your password for your account. Below is the one-time password (OTP) you need to proceed with resetting your password. This OTP is valid for only 15 minutes:
+
+OTP: {reset_link}
+
+Please enter this OTP on the password reset page to create a new password. If you did not request a password reset, please ignore this email or contact our support if you believe this is an unauthorized attempt to access your account.
+
+Thank you for using our system!
+
+Best regards,
+Device Management Support Team
+
+"""

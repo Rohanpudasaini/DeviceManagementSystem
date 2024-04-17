@@ -13,6 +13,7 @@ contain_header = HTTPBearer()
 ACCESS_SECRET = os.getenv('secret_access')
 REFRESH_SECRET = os.getenv('secret_refresh')
 ALGORITHM = os.getenv('algorithm')
+OTP_SECRET = os.getenv('otp_secret')
 
 def generate_JWT(email:str,):
     payload = {
@@ -89,6 +90,45 @@ def decodRefreshJWT(token:str):
             ) 
                 ) 
 
+
+def generate_otp_JWT(email:str):
+    payload = {
+        'user_identifier':email, 
+        # 'expiry': time.time() + 1200
+        'expiry': time.time() + 240
+        }
+    encoded_otp = jwt.encode(payload,OTP_SECRET,algorithm=ALGORITHM)
+    return encoded_otp
+
+
+def decode_otp_jwt(token:str):
+    try:
+        decode_token = jwt.decode(token=token, key=OTP_SECRET,algorithms=ALGORITHM) 
+        if decode_token['expiry'] >= time.time():
+            return True
+        else:
+            raise HTTPException(
+                status_code=401,
+                detail=error_response(
+                    error=
+                    {
+                        'error_type':constant_messages.TOKEN_ERROR,
+                        "error_message": constant_messages.EXPIRED_TOKEN
+                    }
+            ) 
+            )   
+    except JWTError:
+        raise HTTPException(
+                    status_code=401,
+                    # detail=
+                    detail=error_response(
+                    error=
+                    {
+                        'error_type':constant_messages.TOKEN_ERROR,
+                        "error_message": constant_messages.TOKEN_VERIFICATION_FAILED
+                    }
+            ) 
+                ) 
 
 def hash_password(password):
     pwd_bytes = password.encode('UTF-8')
