@@ -1,12 +1,12 @@
-from fastapi import Depends, FastAPI, HTTPException, Request, BackgroundTasks
+from fastapi import Depends, FastAPI, Form, HTTPException, Request, BackgroundTasks
+from fastapi.templating import Jinja2Templates
 from models import Device, DeviceRequestRecord, MaintainanceHistory, User
 from auth import auth
 from auth.permission_checker import PermissionChecker
 from utils import constant_messages
 from utils.logger import logger
 from utils import send_mail
-import os
-from utils.helper_function import check_for_null_or_deleted, log_request, normal_response
+from utils.helper_function import check_for_null_or_deleted, error_response, log_request, normal_response
 from utils.schema import (
     ChangePasswordModel,
     DeviceAddModel,
@@ -17,6 +17,7 @@ from utils.schema import (
     DeviceUpdateModel,
     LoginModel,
     RefreshTokenModel,
+    ResetPasswordModel,
     UserAddModel,
     UserUpdateModel
 )
@@ -39,7 +40,33 @@ app = FastAPI(
         "email": "admin@rohanpudasaini.com.np",
     },
 )
+templates = Jinja2Templates(directory='templates')
 
+@app.get('/verify_otp')
+def verify_otp(token:str, request:Request):
+    try:
+        token_data = auth.decode_otp_jwt(token)
+    except HTTPException:
+        return templates.TemplateResponse(
+            request=request,
+            name='expired.html')
+    if token_data:
+        return templates.TemplateResponse(
+            request=request,
+            name = 'test.html',
+            context={"token":token}
+            )
+    
+@app.post('/reset_password')
+def reset_password(request:Request,token=Form(), new_password=Form(),confirm_password=Form()):
+    email = auth.decode_otp_jwt(token)
+    email = email['user_identifier']
+    result = User.change_password(email,new_password,confirm_password)
+    if result:
+        return templates.TemplateResponse(
+            request = request,
+            name ='sucess.html'
+        )
 
 @app.get('/', tags=['Home'])
 async def home():
@@ -67,6 +94,25 @@ async def get_new_accessToken(refreshToken: RefreshTokenModel):
             }
         }
     )
+
+@app.post('/forget_password', tags=['Authentication'])
+async def forget_password(resetPassword:ResetPasswordModel, backgroundTasks:BackgroundTasks):
+    is_user = User.from_email(resetPassword.email)
+    if not is_user:
+        raise HTTPException(
+            status_code=404, 
+            detail=error_response(
+                error={
+                    "error_type": constant_messages.REQUEST_NOT_FOUND,
+                    "error_message": constant_messages.request_not_found('user', "email")
+                }))
+    backgroundTasks.add_task(
+        send_mail.reset_mail,
+        email_to_send_to=resetPassword.email,
+        username=is_user.full_name,
+        token = auth.generate_otp_JWT(resetPassword.email))
+    return normal_response(message="Please check your email for password reset link")
+
 
 
 @app.get('/device', tags=['Device'], dependencies=[Depends(PermissionChecker('view_device'))])

@@ -80,7 +80,7 @@ Device Management Team
 
 """
 
-def get_reset_password_html(username: str, reset_link: str):
+def get_reset_link_html(username: str, reset_link: str):
     html_message = """\
     <!DOCTYPE html>
     <html lang="en">
@@ -126,7 +126,7 @@ def get_reset_password_html(username: str, reset_link: str):
             </div>
             <div class="content">
                 <h2>Hello {username},</h2>
-                <p>You recently requested to reset your password for your account. Please click on the button below to reset your password. This link is valid for 24 hours.</p>
+                <p>You recently requested to reset your password for your account. Please click on the button below to reset your password. This link is valid for 5 minutes only.</p>
                 <a href="{reset_link}" class="button">Reset Your Password</a>
                 <p>If you did not request a password reset, please ignore this email or contact support if you believe this is an unauthorized attempt to access your account.</p>
                 <p>Thank you for using our system!</p>
@@ -137,7 +137,7 @@ def get_reset_password_html(username: str, reset_link: str):
     return html_message.format(username=username, reset_link=reset_link)
 
 
-def get_reset_otp_html(username: str, reset_link: str):
+def get_reset_link_text(username: str, reset_link: str):
     return f"""
 Subject: Password Reset Instructions
 

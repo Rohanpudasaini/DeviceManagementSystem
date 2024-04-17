@@ -126,4 +126,6 @@ class ChangePasswordModel(BaseModel):
     old_password: str
     new_password: str
 
-
+class ResetPasswordModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    email:EmailStr
