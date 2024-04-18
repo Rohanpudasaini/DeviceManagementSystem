@@ -44,7 +44,7 @@ class UserAddModel(BaseModel):
     postal_code: str | None = None
     designation: Designation = Designation.VIEWER
     profile_pic_url: str | None = None
-    role: list[str] = ["Viewer"]
+    role:str | None = "Viewer"
 
 
 class DeviceAddModel(BaseModel):
@@ -107,7 +107,7 @@ class UserUpdateModel(BaseModel):
     allow_notification: bool | None = None
     designation: Designation | None = None
     profile_pic_url: str | None = None
-    role: list[str] | None = ["Viewer"]
+    role:str | None = "Viewer"
 
 
 class DeleteModel(BaseModel):

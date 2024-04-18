@@ -149,13 +149,13 @@ class User(Base):
         kwargs.pop('role')
         user_to_add = cls(**kwargs)
         if role_to_add:
-            for role_given in role_to_add:
-                role = Role.from_name(role_given)
-                if role:
-                    user_to_add.role_id.append(role)
+            role = Role.from_name(role_to_add)
+            if role:
+                user_to_add.role_id = role
+            else:
+                role = Role.from_name('Viewer')
+                user_to_add.role_id = role
 
-        role = Role.from_name('Viewer')
-        user_to_add.role_id.append(role)
         session.add(user_to_add)
         try_session_commit(session)
         logger.info(
@@ -230,10 +230,9 @@ class User(Base):
                 },
             )
         if role_to_add:
-            final_roles = [Role.from_name(role) for role in role_to_add]
-            for final_role in final_roles:
-                if final_role:
-                    user_to_update.role_id.append(final_role)
+            final_role = Role.from_name(role_to_add)
+            if final_role:
+                user_to_update.role_id = final_role
         for key, value in kwargs.items():
             if value is not None:
                 # print(value)
