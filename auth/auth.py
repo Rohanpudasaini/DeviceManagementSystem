@@ -18,8 +18,8 @@ OTP_SECRET = os.getenv('otp_secret')
 def generate_JWT(email:str,):
     payload = {
         'user_identifier':email, 
-        # 'expiry': time.time() + 1200
-        'expiry': time.time() + 240
+        'expiry': time.time() + 1200
+        # 'expiry': time.time() + 240
         }
     encoded_access = jwt.encode(payload,ACCESS_SECRET,algorithm=ALGORITHM)
     payload = {

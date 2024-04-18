@@ -74,13 +74,13 @@ def verify_otp(token: str, request: Request):
 
 @api_v1.post("/reset_password", tags=["Authentication"])
 def reset_password(
-    request: Request, token=Form(), new_password=Form(), confirm_password=Form()
+    token=Form(), new_password=Form(), confirm_password=Form()
 ):
     email = auth.decode_otp_jwt(token)
     email = email["user_identifier"]
     result = User.reset_password(email, new_password, confirm_password)
     if result:
-        return templates.TemplateResponse(request=request, name="sucess.html")
+        return normal_response(message="Your password has been successfully updated.")
 
 
 @api_v1.post("/user/login", tags=["Authentication"])
