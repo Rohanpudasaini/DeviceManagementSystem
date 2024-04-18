@@ -236,11 +236,19 @@ class User(Base):
                 }
             ))
         user_object = cls.from_email(email)
+        if not user_object.temp_password:
+            raise HTTPException(status_code=404,
+                detail=error_response(error ={
+                    'error_type': 'No_Temp_Password',
+                    'error_message': "This user haven't requested for temp password or is used the temp password. Please request temp password again"
+                }
+            ))
         check_for_null_or_deleted(user_object,'user','email')
         password = auth.hash_password(new_password)
         user_object.password = password
-        user_object.temporary_password = None
-        user_object.temporary_password_created_at = None
+        user_object.temp_password = None
+        user_object.temp_password_created_at = None
+        session.add(user_object)
         try_session_commit(session)
         return normal_response(message="Password changed sucessfully!")
 
