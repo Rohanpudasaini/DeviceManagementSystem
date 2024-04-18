@@ -171,31 +171,48 @@ class User(Base):
     @classmethod
     def change_default_password(cls, email, **kwargs):
         user_to_update = cls.from_email(email)
-        if kwargs['new_password'] == user_to_update.password:
-            logger.warning("Same password as old password")
-            raise HTTPException(
-                status_code=409,
-                detail=error_response(error ={
-                    'error_type': 'Same Password',
-                    'error_message': "New password same as old password"
-                }
-            ))
-        if kwargs['old_password'] == user_to_update.password:
-            user_to_update.password = auth.hash_password(
-                kwargs['new_password'])
+        if user_to_update:
+            if user_to_update.default_password:
+                if kwargs['new_password'] == user_to_update.password:
+                    logger.warning("Same password as old password")
+                    raise HTTPException(
+                        status_code=409,
+                        detail=error_response(error ={
+                            'error_type': 'Same Password',
+                            'error_message': "New password same as old password"
+                        }
+                    ))
+                if kwargs['old_password'] == user_to_update.password:
+                    user_to_update.password = auth.hash_password(
+                        kwargs['new_password'])
+                    user_to_update.default_password = False
+                    session.add(user_to_update)
+                    try_session_commit(session)
+                    logger.info("Password Changed Sucesfully")
+                    return "Password Changed Sucesfully, Enjoy your account"
+
+                raise HTTPException(
+                    status_code=401,
+                    detail= error_response(error={
+                        "error_type": constant_messages.UNAUTHORIZED,
+                        "error_message": constant_messages.UNAUTHORIZED_MESSAGE
+                    })
+                )
+
+            if auth.verify_password(kwargs['new_password'],user_to_update.password):
+                logger.warning("Same password as old password")
+                raise HTTPException(
+                    status_code=409,
+                    detail=error_response(error ={
+                        'error_type': 'Same Password',
+                        'error_message': "New password same as old password"
+                    }
+                ))
+            user_to_update.password = auth.hash_password(kwargs['new_password'])
             user_to_update.default_password = False
-            session.add(user_to_update)
             try_session_commit(session)
             logger.info("Password Changed Sucesfully")
             return "Password Changed Sucesfully, Enjoy your account"
-        
-        raise HTTPException(
-            status_code=401,
-            detail= error_response(error={
-                "error_type": constant_messages.UNAUTHORIZED,
-                "error_message": constant_messages.UNAUTHORIZED_MESSAGE
-            })
-        )
         
     @classmethod
     def change_password(cls,email,new_password, confirm_password):
