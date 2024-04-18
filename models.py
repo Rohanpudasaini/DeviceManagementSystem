@@ -5,7 +5,6 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from utils.helper_function import check_for_null_or_deleted, generate_password, normal_response, error_response
 from utils.schema import Designation, DeviceStatus, DeviceType, Purpose
 import datetime
-from typing import Optional
 from database.database_connection import session, try_session_commit
 from auth import auth
 from utils import constant_messages
@@ -392,13 +391,12 @@ class User(Base):
                         'refresh_token': refresh_token,
                         'fullname': user_object.full_name,
                         'profile_pic_url': user_object.profile_pic_url,
-                        'role': user_object.role_id.all()
+                        'role': user_object.role_id.first()
                     })
             logger.warning("Default password, redirection to change password")
             return normal_response(message="Defauls password used to login, please change password")
         logger.error("Invalid Credentials, checking temp password")
         result = auth.verify_password(kwargs['password'], user_object.temp_password)
-        print(result)
         if result:
             if (user_object.temp_password_created_at + datetime.timedelta(days=5)).date() > datetime.datetime.now().date():
                 access_token = auth.generate_otp_JWT(email=user_object.email)
@@ -621,8 +619,8 @@ class Device(Base):
         DateTime, default=datetime.datetime.now(tz=datetime.UTC)
     )
     type: Mapped[DeviceType]
-    deleted: Mapped[bool] = mapped_column(default=False)
-    deleted_at = mapped_column(DateTime, nullable=True)
+    deleted: Mapped[bool] = mapped_column(default=False, deferred=True)
+    deleted_at = mapped_column(DateTime, nullable=True, deferred = True)
     specification = mapped_column(ARRAY(String))
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=True)
     user = relationship("User", back_populates="devices")
