@@ -152,7 +152,14 @@ async def get_all_device(
     result, count = Device.get_all(skip=skip, limit=limit)
     logger.info([singleresult.__dict__ for singleresult in result])
     return normal_response(
-        data=[{"total": count, "skip": skip, "limit": limit}, result]
+        data={
+            "pagination":
+                {
+                    "total": count, 
+                    "skip": skip, 
+                    "limit": limit
+                    }, 
+            'result':result}
     )
 
 
@@ -278,7 +285,15 @@ async def get_all_users(
         return normal_response(data=user_info)
     result, count = User.get_all(skip=skip, limit=limit)
     return normal_response(
-        data=[{"total": count, "skip": skip, "limit": limit}, result]
+        data={
+            "pagination":
+                {
+                    "total": count, 
+                    "skip": skip, 
+                    "limit": limit
+                    }, 
+            "result":result
+            }
     )
 
 
