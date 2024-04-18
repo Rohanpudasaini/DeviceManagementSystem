@@ -199,20 +199,30 @@ class User(Base):
                     })
                 )
 
-            if auth.verify_password(kwargs['new_password'],user_to_update.password):
-                logger.warning("Same password as old password")
-                raise HTTPException(
-                    status_code=409,
-                    detail=error_response(error ={
-                        'error_type': 'Same Password',
-                        'error_message': "New password same as old password"
-                    }
-                ))
-            user_to_update.password = auth.hash_password(kwargs['new_password'])
-            user_to_update.default_password = False
-            try_session_commit(session)
-            logger.info("Password Changed Sucesfully")
-            return "Password Changed Sucesfully, Enjoy your account"
+            if auth.verify_password(kwargs['old_password'], user_to_update.password):            
+                if auth.verify_password(kwargs['new_password'],user_to_update.password):
+                    logger.warning("Same password as old password")
+                    raise HTTPException(
+                        status_code=409,
+                        detail=error_response(error ={
+                            'error_type': 'Same Password',
+                            'error_message': "New password same as old password"
+                        }
+                    ))
+                user_to_update.password = auth.hash_password(kwargs['new_password'])
+                user_to_update.default_password = False
+                try_session_commit(session)
+                logger.info("Password Changed Sucesfully")
+                return "Password Changed Sucesfully, Enjoy your account"
+            
+            logger.warning("Password don't match")
+            raise HTTPException(
+                status_code=409,
+                detail=error_response(error ={
+                    "error_type": constant_messages.UNAUTHORIZED,
+                    "error_message": constant_messages.UNAUTHORIZED_MESSAGE
+                }
+            ))
         
     @classmethod
     def reset_password(cls,email,new_password, confirm_password):

@@ -9,7 +9,7 @@ class Purpose(Enum):
     EXCHANGE = "exchange"
 
 
-class Designation(Enum):
+class Role(Enum):
     ADMIN = "admin"
     DEVICE_MANAGER = "device_manager"
     STAFF = "staff"
@@ -28,6 +28,14 @@ class DeviceStatus(Enum):
     INACTIVE = "inactive"
 
 
+class Designation(Enum):
+    MANAGER = 'manager'
+    DEVELOPER = 'developer'
+    HR = 'hr'
+    IT_SUPPORT = 'it support'
+    CEO = 'ceo'
+    VIEWER = 'viewer'
+
 class RefreshTokenModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
     token: str
@@ -42,9 +50,9 @@ class UserAddModel(BaseModel):
     address: str | None = None
     city: str | None = None
     postal_code: str | None = None
-    designation: Designation = Designation.VIEWER
+    designation: Designation = Designation.DEVELOPER
     profile_pic_url: str | None = None
-    role:str | None = "Viewer"
+    role:Role | None = Role.VIEWER
 
 
 class DeviceAddModel(BaseModel):
