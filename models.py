@@ -169,7 +169,7 @@ class User(Base):
         )
 
     @classmethod
-    def change_default_password(cls, email, **kwargs):
+    def change_password(cls, email, **kwargs):
         user_to_update = cls.from_email(email)
         if user_to_update:
             if user_to_update.default_password:
@@ -215,7 +215,7 @@ class User(Base):
             return "Password Changed Sucesfully, Enjoy your account"
         
     @classmethod
-    def change_password(cls,email,new_password, confirm_password):
+    def reset_password(cls,email,new_password, confirm_password):
         if new_password != confirm_password:
             raise HTTPException(status_code=409,
                 detail=error_response(error ={

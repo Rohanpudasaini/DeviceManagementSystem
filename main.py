@@ -75,7 +75,7 @@ def reset_password(
 ):
     email = auth.decode_otp_jwt(token)
     email = email["user_identifier"]
-    result = User.change_password(email, new_password, confirm_password)
+    result = User.reset_password(email, new_password, confirm_password)
     if result:
         return templates.TemplateResponse(request=request, name="sucess.html")
 
@@ -326,7 +326,7 @@ def update_password(
     changePasswordModel: ChangePasswordModel, token=Depends(auth.validate_token)
 ):
     return normal_response(
-        message=User.change_default_password(
+        message=User.change_password(
             email=token.get("user_identifier"), **changePasswordModel.model_dump()
         )
     )
