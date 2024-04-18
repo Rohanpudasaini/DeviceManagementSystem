@@ -45,7 +45,7 @@ async def log_response(response):
 def generate_password(length):
     letters = string.ascii_letters
     digits = string.digits
-    special_chars = string.punctuation
+    special_chars = "$-_.+!*'(),"
     selection_list = letters + digits + special_chars
     password = ''
     for i in range(length):

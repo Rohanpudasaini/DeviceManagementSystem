@@ -47,7 +47,7 @@
 <body>
     <div class="container">
         <h2>Reset Password for {{ email }}</h2>
-        <form method="POST" action="/reset_password">
+        <form method="POST" action="/api/v1/reset_password">
             <input type="hidden" name="token", id="token" value="{{ token }}">
             <div>
                 <label for="new_password">New Password:</label>

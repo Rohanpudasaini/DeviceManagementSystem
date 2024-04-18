@@ -20,14 +20,13 @@ def welcome_mail(email_to_send_to:str,username:str, password:str):
         smtp.login(EMAIL,PASSWORD)
         smtp.send_message(message)
 
-def reset_mail(email_to_send_to:str,username, token:str):
+def reset_mail(email_to_send_to:str,username:str , password:str):
     message = EmailMessage()
     message['Subject'] = "Password Reset Request"
     message['From'] = EMAIL
     message['To'] = email_to_send_to
-    reset_link = HOST + f'?token={token}'
-    message.set_content(get_reset_link_text(username,reset_link=reset_link))
-    message.add_alternative(get_reset_link_html(username,reset_link=reset_link), subtype='html')
+    message.set_content(get_reset_link_text(username,password=password))
+    message.add_alternative(get_reset_link_html(username,password=password), subtype='html')
 
     with smtplib.SMTP_SSL('smtp.gmail.com',465) as smtp:
         smtp.login(EMAIL,PASSWORD)

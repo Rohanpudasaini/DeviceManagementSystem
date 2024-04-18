@@ -1,5 +1,7 @@
+import datetime
 from fastapi import Depends, FastAPI, Form, HTTPException, Request, BackgroundTasks
 from fastapi.templating import Jinja2Templates
+from database.database_connection import try_session_commit, session
 from models import Device, DeviceRequestRecord, MaintainanceHistory, User
 from auth import auth
 from auth.permission_checker import PermissionChecker
@@ -10,6 +12,7 @@ import os
 from utils.helper_function import (
     check_for_null_or_deleted,
     error_response,
+    generate_password,
     log_request,
     normal_response,
 )
@@ -39,7 +42,7 @@ app = FastAPI(
     title="DeviceManagementSystem",
     description=description,
     summary="All your Device related stuff.",
-    version="0.0.1",
+    version="1.0.1",
     contact={
         "name": "Rohan Pudasaini",
         "url": "https://rohanpudasaini.com.np",
@@ -105,8 +108,8 @@ async def get_new_accessToken(refreshToken: RefreshTokenModel):
 async def forget_password(
     resetPassword: ResetPasswordModel, backgroundTasks: BackgroundTasks
 ):
-    is_user = User.from_email(resetPassword.email)
-    if not is_user:
+    user_object = User.from_email(resetPassword.email)
+    if not user_object:
         raise HTTPException(
             status_code=404,
             detail=error_response(
@@ -118,13 +121,18 @@ async def forget_password(
                 }
             ),
         )
+    password = generate_password(12)
     backgroundTasks.add_task(
         send_mail.reset_mail,
         email_to_send_to=resetPassword.email,
-        username=is_user.full_name,
-        token=auth.generate_otp_JWT(resetPassword.email),
+        username=user_object.full_name,
+        password = password,
     )
-    return normal_response(message="Please check your email for password reset link")
+    # user_object.
+    user_object.temp_password = auth.hash_password(password)
+    user_object.temp_password_created_at = datetime.datetime.now(datetime.UTC)
+    try_session_commit(session)
+    return normal_response(message="Please check your email for temporary password")
 
 
 @api_v1.get(
