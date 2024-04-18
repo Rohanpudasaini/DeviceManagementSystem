@@ -114,6 +114,8 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     email: Mapped[str] = mapped_column(unique=True, nullable=False)
     password: Mapped[str] = mapped_column(nullable=False, deferred=True)
+    temp_password: Mapped[str] = mapped_column(nullable=True, deferred=True)
+    temp_password_created_at = mapped_column(DateTime, nullable=True,deferred=True)
     first_name: Mapped[str]
     last_name: Mapped[str]
     phone_no: Mapped[str]
@@ -127,12 +129,12 @@ class User(Base):
     allow_notification: Mapped[bool] = mapped_column(default=True)
     designation: Mapped[Designation] = mapped_column(
         default=Designation.VIEWER)
-    deleted: Mapped[bool] = mapped_column(default=False)
-    deleted_at = mapped_column(DateTime, nullable=True)
+    deleted: Mapped[bool] = mapped_column(default=False,deferred=True)
+    deleted_at = mapped_column(DateTime, nullable=True ,deferred=True)
     role_id = relationship(
         "Role", back_populates="user_id", secondary="users_roles", lazy="dynamic"
     )
-    default_password: Mapped[bool] = mapped_column(default=True)
+    default_password: Mapped[bool] = mapped_column(default=True, deferred=True)
     devices = relationship("Device", back_populates="user")
 
     @hybrid_property
@@ -229,7 +231,7 @@ class User(Base):
         if new_password != confirm_password:
             raise HTTPException(status_code=409,
                 detail=error_response(error ={
-                    'error_type': 'Diffrent Password',
+                    'error_type': 'Different Password',
                     'error_message': "New password and confirm password must be same"
                 }
             ))
@@ -237,6 +239,8 @@ class User(Base):
         check_for_null_or_deleted(user_object,'user','email')
         password = auth.hash_password(new_password)
         user_object.password = password
+        user_object.temporary_password = None
+        user_object.temporary_password_created_at = None
         try_session_commit(session)
         return normal_response(message="Password changed sucessfully!")
 
@@ -365,7 +369,10 @@ class User(Base):
 
     @classmethod
     def login(cls, **kwargs):
-        is_valid, user_object = cls.verify_credential(**kwargs)
+        # is_valid, user_object = cls.verify_credential(**kwargs)
+        user_object = cls.from_email(kwargs["email"])
+        check_for_null_or_deleted(user_object, "email", "User")
+        is_valid = auth.verify_password(kwargs["password"], user_object.password)
         if is_valid:
             access_token, refresh_token = auth.generate_JWT(email=user_object.email)
             if not user_object.default_password:
@@ -381,7 +388,17 @@ class User(Base):
                     })
             logger.warning("Default password, redirection to change password")
             return normal_response(message="Defauls password used to login, please change password")
-        logger.error("Invalid Credentials")
+        logger.error("Invalid Credentials, checking temp password")
+        result = auth.verify_password(kwargs['password'], user_object.temp_password)
+        print(result)
+        if result:
+            if (user_object.temp_password_created_at + datetime.timedelta(days=5)).date() > datetime.datetime.now().date():
+                access_token = auth.generate_otp_JWT(email=user_object.email)
+                return normal_response(
+                    message="Temporary password is used, please use this access token to change password at /reset_password.",
+                    data={
+                        'access_token': access_token
+                    })
         raise HTTPException(status_code=401, detail="Invalid Credentials")
 
     @classmethod
@@ -389,6 +406,11 @@ class User(Base):
         user_object = cls.from_email(kwargs["email"])
         check_for_null_or_deleted(user_object, "email", "User")
         is_valid = auth.verify_password(kwargs["password"], user_object.password)
+        if not is_valid:
+            result = auth.verify_password(kwargs['password'], user_object.temp_password)
+            if result:
+                if (user_object.temp_password_created_at + datetime.timedelta(days=5)) < datetime.datetime.now(tz=datetime.UTC):
+                    is_valid = True
         return is_valid, user_object
 
     @classmethod
