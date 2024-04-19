@@ -3,7 +3,7 @@ from sqlalchemy import DateTime, ForeignKey, Integer, ARRAY, String, Select, fun
 from sqlalchemy.orm import DeclarativeBase, mapped_column, Mapped, relationship
 from sqlalchemy.ext.hybrid import hybrid_property
 from utils.helper_function import check_for_null_or_deleted, generate_password, normal_response, error_response
-from utils.schema import Designation, DeviceStatus, DeviceType, Purpose
+from utils.schema import Designation, DeviceStatus, DeviceType, Purpose, RoleType
 import datetime
 from database.database_connection import session, try_session_commit
 from auth import auth
@@ -126,8 +126,7 @@ class User(Base):
         DateTime, default=datetime.datetime.now(tz=datetime.UTC)
     )
     allow_notification: Mapped[bool] = mapped_column(default=True)
-    designation: Mapped[Designation] = mapped_column(
-        default=Designation.VIEWER)
+    designation: Mapped[Designation] = mapped_column(nullable=True)
     deleted: Mapped[bool] = mapped_column(default=False,deferred=True)
     deleted_at = mapped_column(DateTime, nullable=True ,deferred=True)
     role_id = relationship(
@@ -147,15 +146,16 @@ class User(Base):
         # kwargs['password'] = auth.hash_password(password)
         kwargs['password'] = password
         role_to_add = kwargs.get('role')
+        print(role_to_add)
         kwargs.pop('role')
         user_to_add = cls(**kwargs)
         if role_to_add:
             role = Role.from_name(role_to_add)
             if role:
-                user_to_add.role_id = role
+                user_to_add.role_id = [role]
             else:
-                role = Role.from_name('Viewer')
-                user_to_add.role_id = role
+                role = Role.from_name('viewer')
+                user_to_add.role_id = [role]
 
         session.add(user_to_add)
         try_session_commit(session)
@@ -726,7 +726,7 @@ class Device(Base):
 class Role(Base):
     __tablename__ = "role"
     id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(nullable=False, unique=True)
+    name: Mapped[RoleType] = mapped_column(nullable=False, unique=True)
     permission_id = relationship(
         "Permission",
         back_populates="role_id",
