@@ -80,24 +80,9 @@ def reset_password(
 
 
 @api_v1.post("/user/login", tags=["Authentication"])
-async def login(loginModel: LoginModel,backgroundTasks: BackgroundTasks):
+async def login(loginModel: LoginModel):
     return User.login(**loginModel.model_dump())
 
-
-
-@api_v1.post("/user/request_mail", tags=["User"])
-def request_mail(backgroundTasks: BackgroundTasks, token=Depends(auth.validate_token)):
-    email = token["user_identifier"]
-    user_object = User.from_email(email)
-    backgroundTasks.add_task(
-        send_mail.welcome_mail,
-        email_to_send_to=email,
-        username=user_object.full_name,
-        password=user_object.password,
-    )
-    return normal_response(
-        message="Mail sent sucessfully, please check your registered mail"
-    )
 
 
 @api_v1.post("/user/refresh_token", tags=["Authentication"], status_code=201)
@@ -159,7 +144,7 @@ async def get_all_device(
     await log_request(request)
     if id:
         user_info = Device.from_id(id)
-        check_for_null_or_deleted(user_info, "id", "user")
+        check_for_null_or_deleted(user_info, "mac_address", "device")
         return normal_response(data=user_info)
     result, count = Device.get_all(skip=skip, limit=limit)
     logger.info([singleresult.__dict__ for singleresult in result])

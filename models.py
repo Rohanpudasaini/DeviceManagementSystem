@@ -356,21 +356,22 @@ class User(Base):
 
     @classmethod
     def from_id(cls, id):
-        return session.scalar(Select(cls).where(cls.id == id))
+        return session.scalar(Select(cls).where(cls.id == id, cls.deleted == False))
 
     @classmethod
     def from_email(cls, email):
-        return session.scalar(Select(cls).where(cls.email == email))
+        return session.scalar(Select(cls).where(cls.email == email, cls.deleted == False))
 
     @classmethod
     def login(cls, **kwargs):
-        # is_valid, user_object = cls.verify_credential(**kwargs)
         user_object = cls.from_email(kwargs["email"])
         check_for_null_or_deleted(user_object, "email", "User")
         is_valid = auth.verify_password(kwargs["password"], user_object.password)
         if is_valid:
             access_token, refresh_token = auth.generate_JWT(email=user_object.email)
             if not user_object.default_password:
+                user_object.temp_password = None
+                user_object.temp_password_created_at = None
                 logger.info("Login Sucessfull")
                 return normal_response(
                     message='Login Sucessfull',
@@ -400,17 +401,6 @@ class User(Base):
                     })
         raise HTTPException(status_code=401, detail="Invalid Credentials")
 
-    @classmethod
-    def verify_credential(cls, **kwargs):
-        user_object = cls.from_email(kwargs["email"])
-        check_for_null_or_deleted(user_object, "email", "User")
-        is_valid = auth.verify_password(kwargs["password"], user_object.password)
-        if not is_valid:
-            result = auth.verify_password(kwargs['password'], user_object.temp_password)
-            if result:
-                if (user_object.temp_password_created_at + datetime.timedelta(days=5)) < datetime.datetime.now(tz=datetime.UTC):
-                    is_valid = True
-        return is_valid, user_object
 
     @classmethod
     def get_all_role(cls, email):
@@ -662,11 +652,11 @@ class Device(Base):
 
     @classmethod
     def from_id(cls, id):
-        return session.scalar(Select(cls).where(cls.id == id))
+        return session.scalar(Select(cls).where(cls.id == id, cls.deleted == False))
 
     @classmethod
     def from_mac_address(cls, mac_address):
-        return session.scalar(Select(cls).where(cls.mac_address == mac_address))
+        return session.scalar(Select(cls).where(cls.mac_address == mac_address, cls.deleted == False))
 
     @classmethod
     def search_device(cls,
