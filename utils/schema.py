@@ -36,6 +36,7 @@ class Designation(Enum):
     ceo = 'ceo'
     viewer = 'viewer'
 
+
 class RefreshTokenModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
     token: str
@@ -52,7 +53,7 @@ class UserAddModel(BaseModel):
     postal_code: str | None = None
     designation: Designation = Designation.developer
     profile_pic_url: str | None = None
-    role:RoleType | None = RoleType.viewer
+    role: RoleType | None = RoleType.viewer
 
 
 class DeviceAddModel(BaseModel):
@@ -67,7 +68,8 @@ class DeviceAddModel(BaseModel):
     product_images: list[str] | None = None
     type: DeviceType = DeviceType.LAPTOP
     specification: list[str] | None = None
-    purchase_date: datetime.datetime = datetime.datetime.now(datetime.UTC).date()
+    purchase_date: datetime.datetime = datetime.datetime.now(
+        datetime.UTC).date()
 
 
 class DeviceRequestModel(BaseModel):
@@ -81,19 +83,21 @@ class DeviceMaintainanceModel(BaseModel):
     description: str
     cost: float | None = None
     mac_address: str
-    sent_for_repair: datetime.datetime = datetime.datetime.now(datetime.UTC).date()
+    sent_for_repair: datetime.datetime = datetime.datetime.now(
+        datetime.UTC).date()
 
 
 class DeviceReturnFromMaintainanceModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
     mac_address: str
     cost: float
-    returned_from_repair: datetime.datetime = datetime.datetime.now(datetime.UTC).date()
+    returned_from_repair: datetime.datetime = datetime.datetime.now(
+        datetime.UTC).date()
 
 
 class DeviceUpdateModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    mac_address:str
+    mac_address: str
     name: str | None = None
     brand: str | None = None
     price: float | None = None
@@ -105,7 +109,7 @@ class DeviceUpdateModel(BaseModel):
 
 class UserUpdateModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    email: EmailStr 
+    email: EmailStr
     first_name: str | None = None
     last_name: str | None = None
     phone_no: str | None = None
@@ -115,7 +119,7 @@ class UserUpdateModel(BaseModel):
     allow_notification: bool | None = None
     designation: Designation | None = None
     profile_pic_url: str | None = None
-    role:RoleType | None = RoleType.viewer
+    role: RoleType | None = RoleType.viewer
 
 
 class DeleteModel(BaseModel):
@@ -134,6 +138,7 @@ class ChangePasswordModel(BaseModel):
     old_password: str
     new_password: str
 
+
 class ResetPasswordModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    email:EmailStr
+    email: EmailStr

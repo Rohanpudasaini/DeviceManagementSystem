@@ -84,7 +84,6 @@ async def login(loginModel: LoginModel):
     return User.login(**loginModel.model_dump())
 
 
-
 @api_v1.post("/user/refresh_token", tags=["Authentication"], status_code=201)
 async def get_new_accessToken(refreshToken: RefreshTokenModel):
     token = auth.decodRefreshJWT(refreshToken.token)
@@ -123,7 +122,7 @@ async def forget_password(
         send_mail.reset_mail,
         email_to_send_to=resetPassword.email,
         username=user_object.full_name,
-        password = password,
+        password=password,
     )
     # user_object.
     user_object.temp_password = auth.hash_password(password)
@@ -152,11 +151,11 @@ async def get_all_device(
         data={
             "pagination":
                 {
-                    "total": count, 
-                    "skip": skip, 
+                    "total": count,
+                    "skip": skip,
                     "limit": limit
-                    }, 
-            'result':result}
+                },
+            'result': result}
     )
 
 
@@ -285,12 +284,12 @@ async def get_all_users(
         data={
             "pagination":
                 {
-                    "total": count, 
-                    "skip": skip, 
+                    "total": count,
+                    "skip": skip,
                     "limit": limit
-                    }, 
-            "result":result
-            }
+                },
+            "result": result
+        }
     )
 
 
@@ -300,7 +299,7 @@ async def get_all_users(
     tags=["User"],
     dependencies=[Depends(PermissionChecker("create_user"))],
 )
-async def add_user(userAddModel: UserAddModel, request: Request, backgroundTasks:BackgroundTasks):
+async def add_user(userAddModel: UserAddModel, request: Request, backgroundTasks: BackgroundTasks):
     await log_request(request)
     password, username, response = User.add(**userAddModel.model_dump())
     backgroundTasks.add_task(
@@ -331,7 +330,6 @@ async def delete_user(userDeleteModel: DeleteModel, request: Request):
 @api_v1.get("/user/me", tags=["User"])
 async def my_info(token=Depends(auth.validate_token)):
     return normal_response(data=User.from_email(token["user_identifier"]))
-
 
 
 @api_v1.post("/user/change_password", tags=["User"])

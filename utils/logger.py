@@ -1,6 +1,6 @@
 import logging
 import sys
-import os 
+import os
 
 logger = logging.getLogger("FastAPI Log")
 
@@ -14,7 +14,7 @@ if os.path.exists(paths):
     file_handler = logging.FileHandler('log/app.log')
 else:
     os.mkdir('log')
-    file = open('log/app.log','a')
+    file = open('log/app.log', 'a')
     file.close()
     file_handler = logging.FileHandler('log/app.log')
 

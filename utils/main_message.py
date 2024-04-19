@@ -80,6 +80,7 @@ Device Management Team
 
 """
 
+
 def get_reset_link_html(username: str, password: str):
     html_message = """\
     <!DOCTYPE html>

@@ -23,8 +23,10 @@ DELETED_ERROR = 'Object Deleted'
 DELETED_ERROR_MESSAGE = 'The Object you have requested for is deleted, please select other.'
 EXPIRED_TOKEN = "Expired token"
 
-def deletionerror(name:str):
+
+def deletionerror(name: str):
     return f"Can't delete this {name}, it might be already be in use or in repair."
+
 
 def invalid_length(name: str, length: int):
     return f"The {name} must be of {length} length"
