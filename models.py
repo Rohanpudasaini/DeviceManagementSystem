@@ -41,7 +41,7 @@ class MaintainanceHistory(Base):
             device_to_repair_mac_address)
         user = User.from_email(user_email)
         if not user or not device_to_repair:
-            if not device_to_repair.available:
+            if not device_to_repair.status == DeviceStatus.ACTIVE:
                 raise HTTPException(
                     status_code=404,
                     detail=error_response(error={
@@ -339,6 +339,14 @@ class User(Base):
     @classmethod
     def delete(cls, **args):
         user_to_delete = cls.from_email(args["identifier"])
+        if user_to_delete.devices:
+            raise HTTPException(
+                status_code=409,
+                detail=error_response(
+                    error={
+                        'error_type': 'Conflict',
+                        'error_message': "The user have some devices assigned to them, can't delete the user"
+                    }))
         user_to_delete.deleted = True
         user_to_delete.deleted_at = datetime.datetime.now(tz=datetime.UTC)
         session.add(user_to_delete)
@@ -643,6 +651,24 @@ class Device(Base):
     @classmethod
     def delete(cls, **kwargs):
         device_to_delete = cls.from_mac_address(kwargs["identifier"])
+        if device_to_delete.user_id:
+            raise HTTPException(
+                status_code=409,
+                detail=error_response(
+                    error={
+                        'error_type': 'Conflict',
+                        'error_message': "The device already assigned to some user, can't delete it"
+                    }))
+        if device_to_delete.status == DeviceStatus.INACTIVE:
+            raise HTTPException(
+                status_code=409,
+                detail=error_response(
+                    error={
+                        'error_type': 'Conflict',
+                        'error_message': "The device already might be in repair or not available, can't delete it"
+                    }))
+
+        device_to_delete.available = False
         device_to_delete.deleted = True
         device_to_delete.deleted_at = datetime.datetime.now(tz=datetime.UTC)
         session.add(device_to_delete)
