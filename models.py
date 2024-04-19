@@ -410,7 +410,15 @@ class User(Base):
                         data={
                             'token': access_token
                         })
-        raise HTTPException(status_code=401, detail="Invalid Credentials")
+        raise HTTPException(status_code=401, detail=error_response(
+            error={
+                "error_type":"Unauthorized",
+                "error_message":"Invalid credientials !"
+                
+            }
+            
+            
+        ))
 
     @classmethod
     def get_all_role(cls, email):
