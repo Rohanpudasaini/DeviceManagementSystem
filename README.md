@@ -16,7 +16,7 @@ This is a robust device management system API crafted using FastAPI for handling
    Start by cloning the repository to your desired location. If you are using a terminal, navigate to the directory where you want to store the project and execute the following commands:
 
    ```bash
-   git clone https://github.com/YourUsername/device_management_system_fastAPI.git
+   git clone https://github.com/Rohanpudasaini/DeviceManagementSystem.git
    ```
 
    This will create a directory named `device_management_system_fastAPI`. Next, change into this directory:
