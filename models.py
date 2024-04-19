@@ -399,15 +399,16 @@ class User(Base):
                 }
             )
         logger.error("Invalid Credentials, checking temp password")
-        result = auth.verify_password(
-            kwargs['password'], user_object.temp_password)
+        if user_object.temp_password:
+            result = auth.verify_password(
+                kwargs['password'], user_object.temp_password)
         if result:
             if (user_object.temp_password_created_at + datetime.timedelta(days=5)).date() > datetime.datetime.now().date():
                 access_token = auth.generate_otp_JWT(email=user_object.email)
                 return normal_response(
                     message="Temporary password is used, please use this access token to change password at /reset_password.",
                     data={
-                        'access_token': access_token
+                        'token': access_token
                     })
         raise HTTPException(status_code=401, detail="Invalid Credentials")
 
