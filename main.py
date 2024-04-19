@@ -43,7 +43,7 @@ app = FastAPI(
     summary="All your Device related stuff.",
     version="0.0.1",
     contact={
-        "name": "Rohan Pudasaini",
+        "name": "Vanilla Technology",
         "url": "https://rohanpudasaini.com.np",
         "email": "admin@rohanpudasaini.com.np",
     },
@@ -56,7 +56,7 @@ api_v1 = FastAPI(
     summary="All your Device related stuff.",
     version="1.0.1",
     contact={
-        "name": "Rohan Pudasaini",
+        "name": "Vanilla Technology",
         "url": "https://rohanpudasaini.com.np",
         "email": "admin@rohanpudasaini.com.np",
     }
