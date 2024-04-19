@@ -1,7 +1,7 @@
 # Device Management System Using FastAPI
 
 <p align="center">
-  <a><img src="images/dms_logo.png" alt="Device Management System" ></a>
+  <a><img src="images/dms_logo1.png" alt="Device Management System" ></a>
 </p>
 <p align="center">
   <em>Streamlined device management system to facilitate device tracking and control with FastAPI</em>
