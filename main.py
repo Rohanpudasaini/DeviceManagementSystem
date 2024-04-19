@@ -1,6 +1,5 @@
 import datetime
 from fastapi import Depends, FastAPI, Form, HTTPException, Request, BackgroundTasks
-from fastapi.templating import Jinja2Templates
 from database.database_connection import try_session_commit, session
 from models import Device, DeviceRequestRecord, MaintainanceHistory, User
 from auth import auth
@@ -42,7 +41,7 @@ app = FastAPI(
     title="DeviceManagementSystem",
     description=description,
     summary="All your Device related stuff.",
-    version="1.0.1",
+    version="0.0.1",
     contact={
         "name": "Rohan Pudasaini",
         "url": "https://rohanpudasaini.com.np",
@@ -51,25 +50,22 @@ app = FastAPI(
     root_path="/api",
 )
 
-api_v1 = FastAPI()
-templates = Jinja2Templates(directory="templates")
+api_v1 = FastAPI(
+    title="DeviceManagementSystem",
+    description=description,
+    summary="All your Device related stuff.",
+    version="1.0.1",
+    contact={
+        "name": "Rohan Pudasaini",
+        "url": "https://rohanpudasaini.com.np",
+        "email": "admin@rohanpudasaini.com.np",
+    }
+)
 
 
 @api_v1.get("/", tags=["Home"])
 async def home():
     return "Welcome Home"
-
-
-@api_v1.get("/verify_otp", tags=["Authentication"])
-def verify_otp(token: str, request: Request):
-    try:
-        token_data = auth.decode_otp_jwt(token)
-    except HTTPException:
-        return templates.TemplateResponse(request=request, name="expired.html")
-    if token_data:
-        return templates.TemplateResponse(
-            request=request, name="test.html", context={"token": token}
-        )
 
 
 @api_v1.post("/reset_password", tags=["Authentication"])
