@@ -143,10 +143,8 @@ class User(Base):
     def add(cls, **kwargs):
         # username, email, password, message
         password = generate_password(12)
-        # kwargs['password'] = auth.hash_password(password)
-        kwargs['password'] = password
+        kwargs['password'] = auth.hash_password(password)
         role_to_add = kwargs.get('role')
-        print(role_to_add)
         kwargs.pop('role')
         user_to_add = cls(**kwargs)
         if role_to_add:
@@ -161,12 +159,8 @@ class User(Base):
         try_session_commit(session)
         logger.info(
             msg=f'User with username {user_to_add.full_name} Added Sucesully')
-        return normal_response(
-            message='User added sucessfully, Please find your tokens below. Please request for a temporary default password to login and change your password. Failing to verify your email will result in permanent deletion of your account in 7 days.',
-            data={
-                'access_token': auth.generate_JWT(kwargs['email'])[0],
-                'refresh_token': auth.generate_JWT(kwargs['email'])[1]
-            }
+        return password, user_to_add.full_name,normal_response(
+            message='User added sucessfully, Please find your temporary password in mail'
         )
 
     @classmethod
@@ -235,18 +229,12 @@ class User(Base):
                 }
             ))
         user_object = cls.from_email(email)
-        if not user_object.temp_password:
-            raise HTTPException(status_code=404,
-                detail=error_response(error ={
-                    'error_type': 'No_Temp_Password',
-                    'error_message': "This user haven't requested for temp password or is used the temp password. Please request temp password again"
-                }
-            ))
         check_for_null_or_deleted(user_object,'user','email')
         password = auth.hash_password(new_password)
         user_object.password = password
         user_object.temp_password = None
         user_object.temp_password_created_at = None
+        user_object.default_password= False
         session.add(user_object)
         try_session_commit(session)
         return normal_response(message="Password changed sucessfully!")
@@ -394,7 +382,12 @@ class User(Base):
                         'role': user_object.role_id.first()
                     })
             logger.warning("Default password, redirection to change password")
-            return normal_response(message="Defauls password used to login, please change password")
+            return normal_response(
+                message="Defauls password used to login, please change password, use the below provided token to reset password at /reset_password",
+                data= {
+                    'token': auth.generate_otp_JWT(user_object.email)
+                }                
+                )
         logger.error("Invalid Credentials, checking temp password")
         result = auth.verify_password(kwargs['password'], user_object.temp_password)
         if result:
