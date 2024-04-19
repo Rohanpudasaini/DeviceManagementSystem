@@ -80,8 +80,24 @@ def reset_password(
 
 
 @api_v1.post("/user/login", tags=["Authentication"])
-async def login(loginModel: LoginModel):
+async def login(loginModel: LoginModel,backgroundTasks: BackgroundTasks):
     return User.login(**loginModel.model_dump())
+
+
+
+@api_v1.post("/user/request_mail", tags=["User"])
+def request_mail(backgroundTasks: BackgroundTasks, token=Depends(auth.validate_token)):
+    email = token["user_identifier"]
+    user_object = User.from_email(email)
+    backgroundTasks.add_task(
+        send_mail.welcome_mail,
+        email_to_send_to=email,
+        username=user_object.full_name,
+        password=user_object.password,
+    )
+    return normal_response(
+        message="Mail sent sucessfully, please check your registered mail"
+    )
 
 
 @api_v1.post("/user/refresh_token", tags=["Authentication"], status_code=201)
@@ -299,9 +315,16 @@ async def get_all_users(
     tags=["User"],
     dependencies=[Depends(PermissionChecker("create_user"))],
 )
-async def add_user(userAddModel: UserAddModel, request: Request):
+async def add_user(userAddModel: UserAddModel, request: Request, backgroundTasks:BackgroundTasks):
     await log_request(request)
-    return User.add(**userAddModel.model_dump())
+    password, username, response = User.add(**userAddModel.model_dump())
+    backgroundTasks.add_task(
+        send_mail.welcome_mail,
+        email_to_send_to=userAddModel.email,
+        username=username,
+        password=password,
+    )
+    return response
 
 
 @api_v1.patch(
@@ -324,20 +347,6 @@ async def delete_user(userDeleteModel: DeleteModel, request: Request):
 async def my_info(token=Depends(auth.validate_token)):
     return normal_response(data=User.from_email(token["user_identifier"]))
 
-
-@api_v1.post("/user/request_mail", tags=["User"])
-def request_mail(backgroundTasks: BackgroundTasks, token=Depends(auth.validate_token)):
-    email = token["user_identifier"]
-    user_object = User.from_email(email)
-    backgroundTasks.add_task(
-        send_mail.welcome_mail,
-        email_to_send_to=email,
-        username=user_object.full_name,
-        password=user_object.password,
-    )
-    return normal_response(
-        message="Mail sent sucessfully, please check your registered mail"
-    )
 
 
 @api_v1.post("/user/change_password", tags=["User"])
