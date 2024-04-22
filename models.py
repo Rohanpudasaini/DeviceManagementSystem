@@ -102,6 +102,7 @@ class MaintainanceHistory(Base):
         # returned_device = Device.from_id(device_id)
         user_object = User.from_id(record_to_update.user_id)
         returned_device.user = user_object
+        returned_device.status = DeviceStatus.ACTIVE
         session.add(record_to_update)
         session.add(returned_device)
         try_session_commit(session)
@@ -260,7 +261,7 @@ class User(Base):
         if role_to_add:
             final_role = Role.from_name(role_to_add)
             if final_role:
-                user_to_update.role_id = final_role
+                user_to_update.role_id = [final_role]
         for key, value in kwargs.items():
             if value is not None:
                 # print(value)
@@ -272,23 +273,23 @@ class User(Base):
 
     @classmethod
     def current_device(cls, token: dict):
-        try:
-            email = token['user_identifier']
-            if not email:
-                # return normal_response(message ="Authentication failed .please check your token !")
-                raise HTTPException(status_code=401, detail=error_response(error={
-                    "error_type": constant_messages.TOKEN_ERROR,
-                    "error_message": constant_messages.TOKEN_VERIFICATION_FAILED
-                }))
-            user = session.scalar(Select(cls).where(cls.email == email))
-            if not user:
+        
+        email = token['user_identifier']
+        if not email:
+            # return normal_response(message ="Authentication failed .please check your token !")
+            raise HTTPException(status_code=401, detail=error_response(error={
+                "error_type": constant_messages.TOKEN_ERROR,
+                "error_message": constant_messages.TOKEN_VERIFICATION_FAILED
+            }))
+        user = session.scalar(Select(cls).where(cls.email == email))
+        if not user:
                 raise HTTPException(status_code=404, detail=error_response(error={
                     "error_type": constant_messages.REQUEST_NOT_FOUND,
                     "error_message": constant_messages.request_not_found('user', "email")
                 }))
 
-            devices = user.devices
-            if not devices:
+        devices = user.devices
+        if not devices:
                 raise HTTPException(
                     status_code=404,
                     detail=error_response(
@@ -298,18 +299,7 @@ class User(Base):
                             "error_message": f"No device is associated with the {user.full_name}"
                         }))
 
-            return devices
-
-        except Exception as e:
-            print(f"An error occurred: {e}")
-            raise HTTPException(
-                status_code=500,
-                detail=error_response(
-                    error={
-                        "error_type": constant_messages.INTERNAL_ERROR,
-                        "error_message": constant_messages.INTERNAL_ERROR_MESSAGE
-                    }
-                ))
+        return devices
 
     @classmethod
     def current_devices_by_user_id(cls, user_id):
