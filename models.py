@@ -395,7 +395,7 @@ class User(Base):
             return normal_response(
                 message="Defauls password used to login, please change password, use the below provided token to reset password at /reset_password",
                 data={
-                    'token': auth.generate_otp_JWT(user_object.email)
+                    'token': auth.generate_otp_JWT(kwargs["email"])
                 }
             )
         logger.error("Invalid Credentials, checking temp password")
@@ -404,7 +404,7 @@ class User(Base):
                 kwargs['password'], user_object.temp_password)
             if result:
                 if (user_object.temp_password_created_at + datetime.timedelta(days=5)).date() > datetime.datetime.now().date():
-                    access_token = auth.generate_otp_JWT(email=user_object.email)
+                    access_token = auth.generate_otp_JWT(kwargs["email"])
                     return normal_response(
                         message="Temporary password is used, please use this access token to change password at /reset_password.",
                         data={
