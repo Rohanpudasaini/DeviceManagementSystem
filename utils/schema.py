@@ -79,7 +79,6 @@ class DeviceMaintenanceModel(UpdatedBaseModel):
     purpose: Purpose
     description: str
     cost: float | None = None
-    mac_address: str
     sent_for_repair: datetime.datetime = datetime.datetime.now(datetime.UTC).date()
 
 

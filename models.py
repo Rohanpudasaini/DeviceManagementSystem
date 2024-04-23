@@ -102,7 +102,10 @@ class MaintenanceHistory(Base):
         session.add(returned_device)
         try_session_commit(session)
         return f"The device with id {device_id} returned Successfully"
-
+    
+    @classmethod
+    def get_device_maintenance_history(cls, device_id):
+        return session.scalars(Select(cls).where(cls.device_id == device_id)).all()
 
 class User(Base):
     __tablename__ = "user"

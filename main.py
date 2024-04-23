@@ -282,6 +282,15 @@ async def return_maintenance(mac_address:str,deviceReturn: DeviceReturnFromMaint
             **deviceReturn.model_dump())
     )
 
+@api_v1.get("/device/history/{mac_address}")
+def get_device_history(mac_address:str):
+    device_object = Device.from_mac_address(mac_address)
+    check_for_null_or_deleted(device_object)
+    device_id = device_object.id
+    result = MaintenanceHistory.get_device_maintenance_history(device_id)
+    return normal_response(
+        message= "Successful",
+        data=result)
 
 @api_v1.get(
     "/user", tags=["User"], dependencies=[Depends(PermissionChecker("view_user"))]
