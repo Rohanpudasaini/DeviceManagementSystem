@@ -785,10 +785,11 @@ class Device(Base):
             )
 
         response = {
+            "pagination": {
+                "total": total_devices,
+                "count": len(devices),
+            },
             "devices": devices,
-            "total": total_devices,
-            "count": len(devices),
-            "pagination": {},
         }
 
         if page_num > 1:
