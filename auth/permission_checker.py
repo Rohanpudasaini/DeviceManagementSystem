@@ -16,8 +16,7 @@ class PermissionChecker:
             raise HTTPException(
                 status_code=403,
                 detail=error_response(
-                    error={
-                        'error_type': constant_messages.FORBIDDEN,
-                        'error_message': "Not enough permissions to access this resource"
-                    }))
+                    message = constant_messages.FORBIDDEN,
+                    error="Not enough permissions to access this resource"
+                    ))
         return user

@@ -8,8 +8,7 @@ from fastapi import Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from utils.helper_function import error_response
 from utils import constant_messages
-
-contain_header = HTTPBearer()
+contain_header = HTTPBearer(auto_error=False)
 
 ACCESS_SECRET = os.getenv("SECRET_ACCESS")
 REFRESH_SECRET = os.getenv("SECRET_REFRESH")
@@ -41,21 +40,17 @@ def decodeAccessJWT(token: str):
             raise HTTPException(
                 status_code=401,
                 detail=error_response(
-                    error={
-                        "error_type": constant_messages.TOKEN_ERROR,
-                        "error_message": constant_messages.INVALID_TOKEN_SCHEME,
-                    }
-                ),
+                    message= constant_messages.TOKEN_ERROR,
+                    error=constant_messages.INVALID_TOKEN_SCHEME
+                )
             )
     except JWTError:
         raise HTTPException(
             status_code=401,
             detail=error_response(
-                error={
-                    "error_type": constant_messages.TOKEN_ERROR,
-                    "error_message": constant_messages.TOKEN_VERIFICATION_FAILED,
-                }
-            ),
+                message= constant_messages.TOKEN_ERROR,
+                error=constant_messages.TOKEN_VERIFICATION_FAILED
+            )
         )
 
 
@@ -70,22 +65,20 @@ def decodeRefreshJWT(token: str):
             raise HTTPException(
                 status_code=401,
                 detail=error_response(
-                    error={
-                        "error_type": constant_messages.TOKEN_ERROR,
-                        "error_message": constant_messages.EXPIRED_TOKEN,
-                    }
-                ),
+                    message = constant_messages.TOKEN_ERROR,
+                    error=constant_messages.EXPIRED_TOKEN
+                    
+                )
             )
     except JWTError:
         raise HTTPException(
             status_code=401,
             # detail=
             detail=error_response(
-                error={
-                    "error_type": constant_messages.TOKEN_ERROR,
-                    "error_message": constant_messages.TOKEN_VERIFICATION_FAILED,
-                }
-            ),
+                message = constant_messages.TOKEN_ERROR,
+                error=constant_messages.TOKEN_VERIFICATION_FAILED
+                
+            )
         )
 
 
@@ -108,22 +101,18 @@ def decode_otp_jwt(token: str):
             raise HTTPException(
                 status_code=401,
                 detail=error_response(
-                    error={
-                        "error_type": constant_messages.TOKEN_ERROR,
-                        "error_message": constant_messages.EXPIRED_TOKEN,
-                    }
-                ),
+                    message= constant_messages.TOKEN_ERROR,
+                    error=constant_messages.EXPIRED_TOKEN
+                )
             )
     except JWTError:
         raise HTTPException(
             status_code=401,
             # detail=
             detail=error_response(
-                error={
-                    "error_type": constant_messages.TOKEN_ERROR,
-                    "error_message": constant_messages.TOKEN_VERIFICATION_FAILED,
-                }
-            ),
+                message= constant_messages.TOKEN_ERROR,
+                error=constant_messages.TOKEN_VERIFICATION_FAILED
+            )
         )
 
 
@@ -140,7 +129,13 @@ def verify_password(plain_password: str, hashed_password):
     return bcrypt.checkpw(password_byte_enc, hashed_password)
 
 
-def validate_token(
-    token: Annotated[HTTPAuthorizationCredentials, Depends(contain_header)]
-):
-    return decodeAccessJWT(token.credentials)
+def validate_token(token: Annotated[HTTPAuthorizationCredentials, Depends(contain_header)]):
+    if token:
+        return decodeAccessJWT(token.credentials)
+    raise HTTPException(
+        status_code= 401,
+        detail= error_response(
+            message= constant_messages.TOKEN_ERROR,
+            error=constant_messages.TOKEN_VERIFICATION_FAILED
+            )
+    )

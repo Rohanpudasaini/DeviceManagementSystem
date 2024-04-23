@@ -87,14 +87,12 @@ class DeviceMaintenanceModel(BaseModel):
 
 class DeviceReturnFromMaintenanceModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    mac_address: str
     cost: float
     returned_from_repair: datetime.datetime = datetime.datetime.now(datetime.UTC).date()
 
 
 class DeviceUpdateModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    mac_address: str
     name: str | None = None
     brand: str | None = None
     price: float | None = None
@@ -106,7 +104,6 @@ class DeviceUpdateModel(BaseModel):
 
 class UserUpdateModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    email: EmailStr
     first_name: str | None = None
     last_name: str | None = None
     phone_no: str | None = None
