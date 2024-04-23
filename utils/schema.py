@@ -2,6 +2,9 @@ from enum import Enum
 from pydantic import BaseModel, ConfigDict, EmailStr
 import datetime
 
+class UpdatedBaseModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
 
 class Purpose(Enum):
     REPAIR = "repair"
@@ -37,13 +40,11 @@ class Designation(Enum):
     viewer = "viewer"
 
 
-class RefreshTokenModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class RefreshTokenModel(UpdatedBaseModel):
     token: str
 
 
-class UserAddModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class UserAddModel(UpdatedBaseModel):
     email: EmailStr
     first_name: str
     last_name: str
@@ -56,8 +57,7 @@ class UserAddModel(BaseModel):
     role: RoleType | None = RoleType.viewer
 
 
-class DeviceAddModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class DeviceAddModel(UpdatedBaseModel):
     name: str
     brand: str
     price: float
@@ -71,13 +71,11 @@ class DeviceAddModel(BaseModel):
     purchase_date: datetime.datetime = datetime.datetime.now(datetime.UTC).date()
 
 
-class DeviceRequestModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class DeviceRequestModel(UpdatedBaseModel):
     mac_address: str
 
 
-class DeviceMaintenanceModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class DeviceMaintenanceModel(UpdatedBaseModel):
     purpose: Purpose
     description: str
     cost: float | None = None
@@ -85,14 +83,12 @@ class DeviceMaintenanceModel(BaseModel):
     sent_for_repair: datetime.datetime = datetime.datetime.now(datetime.UTC).date()
 
 
-class DeviceReturnFromMaintenanceModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class DeviceReturnFromMaintenanceModel(UpdatedBaseModel):
     cost: float
     returned_from_repair: datetime.datetime = datetime.datetime.now(datetime.UTC).date()
 
 
-class DeviceUpdateModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class DeviceUpdateModel(UpdatedBaseModel):
     name: str | None = None
     brand: str | None = None
     price: float | None = None
@@ -102,8 +98,7 @@ class DeviceUpdateModel(BaseModel):
     specification: list[str] | None = None
 
 
-class UserUpdateModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class UserUpdateModel(UpdatedBaseModel):
     first_name: str | None = None
     last_name: str | None = None
     phone_no: str | None = None
@@ -116,23 +111,19 @@ class UserUpdateModel(BaseModel):
     role: RoleType | None = RoleType.viewer
 
 
-class DeleteModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class DeleteModel(UpdatedBaseModel):
     identifier: str
 
 
-class LoginModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class LoginModel(UpdatedBaseModel):
     email: EmailStr
     password: str
 
 
-class ChangePasswordModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class ChangePasswordModel(UpdatedBaseModel):
     old_password: str
     new_password: str
 
 
-class ResetPasswordModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class ResetPasswordModel(UpdatedBaseModel):
     email: EmailStr

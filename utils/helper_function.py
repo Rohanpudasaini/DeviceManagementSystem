@@ -8,16 +8,15 @@ import secrets
 
 
 def check_for_null_or_deleted(object, email='identifier', name='Object'):
-    if object:
-        if object.deleted:
-            raise HTTPException(
-                status_code=404,
-                detail=error_response(
-                    message=constant_messages.DELETED_ERROR,
-                    error=constant_messages.DELETED_ERROR_MESSAGE +
-                    f' The {object.__class__} was deleted at {object.deleted_at}'
-                )
+    if object or object.deleted:
+        raise HTTPException(
+            status_code=404,
+            detail=error_response(
+                message=constant_messages.DELETED_ERROR,
+                error=constant_messages.DELETED_ERROR_MESSAGE +
+                f' The {object.__class__} was deleted at {object.deleted_at}'
             )
+        )
     else:
         raise HTTPException(
             status_code=404,
