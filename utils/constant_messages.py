@@ -16,15 +16,17 @@ NO_CONTENT = "No content"
 NO_CONTENT_MESSAGE = "No Content Found"
 INSUFFICIENT_RESOURCES = "Insufficient Resources"
 BAD_REQUEST = "Bad Request"
-INTEGERITYERROR = 'IntegrityError'
-INTEGERITYERROR_MESSAGE = 'Can\'t compute your request. Duplicate value'
-DELETIONERROR = 'Can\'t Delete'
-DELETED_ERROR = 'Object Deleted'
-DELETED_ERROR_MESSAGE = 'The Object you have requested for is deleted, please select other.'
+INTEGRITY_ERROR = "IntegrityError"
+INTEGRITY_ERROR_MESSAGE = "Can't compute your request. Duplicate value"
+DELETION_ERROR = "Can't Delete"
+DELETED_ERROR = "Object Deleted"
+DELETED_ERROR_MESSAGE = (
+    "The Object you have requested for is deleted, please select other."
+)
 EXPIRED_TOKEN = "Expired token"
 
 
-def deletionerror(name: str):
+def deletion_error(name: str):
     return f"Can't delete this {name}, it might be already be in use or in repair."
 
 
@@ -43,4 +45,4 @@ def bad_request(name: str, distinguisher: str, already_issued: bool = False):
 
 
 def insufficient_resources(name: str):
-    return f"The requested {name} is curently assigned to some other user, please check again after some days."
+    return f"The requested {name} is currently assigned to some other user, please check again after some days."

@@ -1,7 +1,7 @@
 import datetime
 from fastapi import Depends, FastAPI, Form, HTTPException, Request, BackgroundTasks
 from database.database_connection import try_session_commit, session
-from models import Device, DeviceRequestRecord, MaintainanceHistory, User
+from models import Device, DeviceRequestRecord, MaintenanceHistory, User
 from auth import auth
 from auth.permission_checker import PermissionChecker
 from utils import constant_messages
@@ -19,9 +19,9 @@ from utils.schema import (
     ChangePasswordModel,
     DeviceAddModel,
     DeleteModel,
-    DeviceMaintainanceModel,
+    DeviceMaintenanceModel,
     DeviceRequestModel,
-    DeviceReturnFromMaintainanceModel,
+    DeviceReturnFromMaintenanceModel,
     DeviceUpdateModel,
     LoginModel,
     RefreshTokenModel,
@@ -30,11 +30,10 @@ from utils.schema import (
     UserUpdateModel,
 )
 
-
 description = """
 Device Management API helps you maintain your devices and their users. 🚀
 
-Please go to  `/` to know about ervery availabe route.
+Please go to  `/` to know about every available route.
 """
 
 app = FastAPI(
@@ -59,7 +58,7 @@ api_v1 = FastAPI(
         "name": "Vanilla Technology",
         "url": "https://rohanpudasaini.com.np",
         "email": "admin@rohanpudasaini.com.np",
-    }
+    },
 )
 
 
@@ -69,9 +68,7 @@ async def home():
 
 
 @api_v1.post("/reset_password", tags=["Authentication"])
-def reset_password(
-    token=Form(), new_password=Form(), confirm_password=Form()
-):
+def reset_password(token=Form(), new_password=Form(), confirm_password=Form()):
     email = auth.decode_otp_jwt(token)
     email = email["user_identifier"]
     result = User.reset_password(email, new_password, confirm_password)
@@ -86,7 +83,7 @@ async def login(loginModel: LoginModel):
 
 @api_v1.post("/user/refresh_token", tags=["Authentication"], status_code=201)
 async def get_new_accessToken(refreshToken: RefreshTokenModel):
-    token = auth.decodRefreshJWT(refreshToken.token)
+    token = auth.decodeRefreshJWT(refreshToken.token)
     if token:
         return normal_response(data={"access_token": token})
     raise HTTPException(
@@ -131,34 +128,6 @@ async def forget_password(
     return normal_response(message="Please check your email for temporary password")
 
 
-@api_v1.get(
-    "/device", tags=["Device"], dependencies=[Depends(PermissionChecker("view_device"))]
-)
-async def get_all_device(
-    request: Request,
-    skip: int | None = 0,
-    limit: int | None = 20,
-    id: int | None = None,
-):
-    await log_request(request)
-    if id:
-        user_info = Device.from_id(id)
-        check_for_null_or_deleted(user_info, "mac_address", "device")
-        return normal_response(data=user_info)
-    result, count = Device.get_all(skip=skip, limit=limit)
-    logger.info([singleresult.__dict__ for singleresult in result])
-    return normal_response(
-        data={
-            "pagination":
-                {
-                    "total": count,
-                    "skip": skip,
-                    "limit": limit
-                },
-            'result': result}
-    )
-
-
 @api_v1.post(
     "/device",
     tags=["Device"],
@@ -191,12 +160,14 @@ async def delete_device(deviceDeleteModel: DeleteModel, request: Request):
 
 
 @api_v1.get(
-    "/device/search",
+    "/device",
     tags=["Device"],
     dependencies=[Depends(PermissionChecker("view_device"))],
 )
-async def search_device(name=None, brand=None):
-    search_devices = Device.search_device(name, brand)
+async def get_all_devices(
+    name=None, brand=None, page_num: int = 1, page_size: int = 20
+):
+    search_devices = Device.get_all_devices(name, brand, page_num, page_size)
     return search_devices
 
 
@@ -239,29 +210,29 @@ async def return_device(
 
 
 @api_v1.post(
-    "/device/request_maintainance",
+    "/device/request_maintenance",
     tags=["Device"],
     status_code=201,
     dependencies=[Depends(PermissionChecker("request_device"))],
 )
-async def request_maintainance(
-    deviceMaintainanceModel: DeviceMaintainanceModel, token=Depends(auth.validate_token)
+async def request_maintenance(
+    deviceMaintenanceModel: DeviceMaintenanceModel, token=Depends(auth.validate_token)
 ):
     return normal_response(
-        message=MaintainanceHistory.add(
-            email=token.get("user_identifier"), **deviceMaintainanceModel.model_dump()
+        message=MaintenanceHistory.add(
+            email=token.get("user_identifier"), **deviceMaintenanceModel.model_dump()
         )
     )
 
 
 @api_v1.patch(
-    "/device/return_maintainance",
+    "/device/return_maintenance",
     tags=["Device"],
     dependencies=[Depends(PermissionChecker("request_device"))],
 )
-async def return_maintainance(deviceReturn: DeviceReturnFromMaintainanceModel):
+async def return_maintenance(deviceReturn: DeviceReturnFromMaintenanceModel):
     return normal_response(
-        message=MaintainanceHistory.update(**deviceReturn.model_dump())
+        message=MaintenanceHistory.update(**deviceReturn.model_dump())
     )
 
 
@@ -282,13 +253,8 @@ async def get_all_users(
     result, count = User.get_all(skip=skip, limit=limit)
     return normal_response(
         data={
-            "pagination":
-                {
-                    "total": count,
-                    "skip": skip,
-                    "limit": limit
-                },
-            "result": result
+            "pagination": {"total": count, "skip": skip, "limit": limit},
+            "result": result,
         }
     )
 
@@ -299,7 +265,9 @@ async def get_all_users(
     tags=["User"],
     dependencies=[Depends(PermissionChecker("create_user"))],
 )
-async def add_user(userAddModel: UserAddModel, request: Request, backgroundTasks: BackgroundTasks):
+async def add_user(
+    userAddModel: UserAddModel, request: Request, backgroundTasks: BackgroundTasks
+):
     await log_request(request)
     password, username, response = User.add(**userAddModel.model_dump())
     backgroundTasks.add_task(
@@ -354,7 +322,7 @@ async def current_device(token: str = Depends(auth.validate_token)):
     tags=["User"],
     dependencies=[Depends(PermissionChecker("all_access"))],
 )
-async def current_devices_user_id(id):
+async def current_devices_user_id(id: int):
     current_devices = User.current_devices_by_user_id(id)
     return current_devices
 
