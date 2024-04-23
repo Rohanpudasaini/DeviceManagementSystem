@@ -104,7 +104,7 @@ class MaintenanceHistory(Base):
         return f"The device with id {device_id} returned Successfully"
     
     @classmethod
-    def get_device_maintenance_history(cls, device_id):
+    def device_maintenance_history(cls, device_id):
         return session.scalars(Select(cls).where(cls.device_id == device_id)).all()
 
 class User(Base):
@@ -573,6 +573,9 @@ class DeviceRequestRecord(Base):
             )
         )
 
+    @classmethod
+    def device_owner_history(cls, device_id):
+        return session.scalars(Select(cls).where(cls.device_id == device_id)).all()
 
 class Device(Base):
     __tablename__ = "device"
