@@ -30,16 +30,16 @@ This is a robust device management system API crafted using FastAPI for handling
    Set up your environment variables in a `.env` file using the following format:
 
    ```bash
-   host=database_host
-   database=database_name
-   user=database_username
-   password=database_password
-   secret=AccessToken_secret_key
-   algorithm=Token_algorithm
-   secret_refresh=RefreshToken_secret_key
-   otp_secret=secret_for_otp
+   HOST=database_host
+   DATABASE=database_name
+   USER=database_username
+   PASSWORD=database_password
+   SECRET_ACCESS=AccessToken_secret_key
+   ALGORITHM=Token_algorithm
+   SECRET_REFRESH=RefreshToken_secret_key
+   OTP_SECRET=secret_for_otp
    EMAIL=email_to_send_notification
-   PASSWORD=email_app_password
+   EMAIL_PASSWORD=email_app_password
    ```
 
 3. Install dependencies
