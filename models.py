@@ -669,51 +669,51 @@ class Device(Base):
             Select(cls).where(cls.mac_address == mac_address, cls.deleted == False)
         )
 
-    # TODO:validation is required to do there ? if the concept is right then we will continue right yes !
+    # # TODO:validation is required to do there ? if the concept is right then we will continue right yes !
 
-    @classmethod  # query means the device right ?
-    def get_all_devices(
-        cls, name=None, brand=None, page_num: int = 1, page_size: int = 10
-    ):
-        query = session.query(cls).filter(cls.deleted == False)
+    # @classmethod  # query means the device right ?
+    # def get_all_devices(
+    #     cls, name=None, brand=None, page_num: int = 1, page_size: int = 10
+    # ):
+    #     query = session.query(cls).filter(cls.deleted == False)
 
-        if name:
-            query = query.filter(cls.name.icontains(name))
-        if brand:
-            query = query.filter(cls.brand.icontains(brand))
+    #     if name:
+    #         query = query.filter(cls.name.icontains(name))
+    #     if brand:
+    #         query = query.filter(cls.brand.icontains(brand))
 
-        total_devices = query.count()
-        devices = query.offset((page_num - 1) * page_size).limit(page_size).all()
+    #     total_devices = query.count()
+    #     devices = query.offset((page_num - 1) * page_size).limit(page_size).all()
 
-        if not devices and (name or brand):
-            raise HTTPException(
-                status_code=404,
-                detail="Device with the specified name and brand not found !",
-            )
+    #     if not devices and (name or brand):
+    #         raise HTTPException(
+    #             status_code=404,
+    #             detail="Device with the specified name and brand not found !",
+    #         )
 
-        response = {
-            "pagination": {
-                "total": total_devices,
-                "count": len(devices),
-            },
-            "devices": devices,
-        }
+    #     response = {
+    #         "pagination": {
+    #             "total": total_devices,
+    #             "count": len(devices),
+    #         },
+    #         "devices": devices,
+    #     }
 
-        if page_num > 1:
+    #     if page_num > 1:
 
-            response["pagination"][
-                "previous"
-            ] = f"/devices?page_num={page_num-1}&page_size={page_size}"
-            devices
-        else:
-            response["pagination"]["previous"] = None
+    #         response["pagination"][
+    #             "previous"
+    #         ] = f"/devices?page_num={page_num-1}&page_size={page_size}"
+    #         devices
+    #     else:
+    #         response["pagination"]["previous"] = None
 
-        if total_devices > page_num * page_size:
-            response["pagination"][
-                "next"
-            ] = f"/devices?page_num={page_num+1}&page_size={page_size}"
-        else:
-            raise HTTPException(status_code=404, detail="No result found  !")
+    #     if total_devices > page_num * page_size:
+    #         response["pagination"][
+    #             "next"
+    #         ] = f"/devices?page_num={page_num+1}&page_size={page_size}"
+    #     else:
+    #         raise HTTPException(status_code=404, detail="No result found  !")
 
     @classmethod
     def get_all(cls, page_number, page_size):

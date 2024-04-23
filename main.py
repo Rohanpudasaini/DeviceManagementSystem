@@ -139,13 +139,13 @@ async def get_all_device(
     request: Request,
     page_number: int | None = 1,
     page_size: int | None = 20,
-    id: int | None = None,
+    mac_address: str | None = None,
     name:str| None = None,
     brand : str| None = None
 ):
     await log_request(request)
-    if id:
-        user_info = Device.from_id(id)
+    if mac_address:
+        user_info = Device.from_mac_address(mac_address)
         check_for_null_or_deleted(user_info, "mac_address", "device")
         return normal_response(data=user_info)
     if name or brand:
