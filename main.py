@@ -115,12 +115,19 @@ async def forget_password(
     return normal_response(message="Please check your email for temporary password")
 
 
-@api_v1.get("/device/categories")
+@api_v1.get(
+    "/device/categories",
+    tags=["Device"],
+    dependencies=[Depends(PermissionChecker("view_device"))]
+)
 async def categories():
-    return normal_response(data =[i for i in DeviceType])
+    return normal_response(data=[i for i in DeviceType])
+
 
 @api_v1.get(
-    "/device", tags=["Device"], dependencies=[Depends(PermissionChecker("view_device"))]
+    "/device",
+    tags=["Device"],
+    dependencies=[Depends(PermissionChecker("view_device"))]
 )
 async def get_all_device(
     request: Request,
@@ -129,7 +136,7 @@ async def get_all_device(
     mac_address: str | None = None,
     name: str | None = None,
     brand: str | None = None,
-    category: str |None = None
+    category: str | None = None
 ):
     await log_request(request)
     if category:
@@ -151,10 +158,12 @@ async def get_all_device(
         else:
             return error_response(
                 message=constant_messages.REQUEST_NOT_FOUND,
-                error=constant_messages.request_not_found("Device", "Brand or Name"),
+                error=constant_messages.request_not_found(
+                    "Device", "Brand or Name"),
             )
 
-    result, count = Device.get_all(page_number=page_number, page_size=page_size)
+    result, count = Device.get_all(
+        page_number=page_number, page_size=page_size)
     final_page = ceil(count / page_size)
     logger.info([singleresult.__dict__ for singleresult in result])
     next_page, previous_page = None, None
@@ -292,29 +301,41 @@ async def return_maintenance(
         )
     )
 
-@api_v1.get("/device/{mac_address}/maintenance-history", tags=["Device"], dependencies=[Depends(PermissionChecker("view_device"))])
-def device_maintenance_history(mac_address:str):
+
+@api_v1.get(
+    "/device/{mac_address}/maintenance-history",
+    tags=["Device"],
+    dependencies=[Depends(PermissionChecker("view_device"))]
+    )
+def device_maintenance_history(mac_address: str):
     device_object = Device.from_mac_address(mac_address)
     check_for_null_or_deleted(device_object)
     device_id = device_object.id
     result = MaintenanceHistory.device_maintenance_history(device_id)
     return normal_response(
-        message= "Successful",
+        message="Successful",
         data=result)
 
 
-@api_v1.get("/device/{mac_address}/owner-history", tags=["Device"], dependencies=[Depends(PermissionChecker("view_device"))])
-def device_owner_history(mac_address:str):
+@api_v1.get(
+    "/device/{mac_address}/owner-history",
+    tags=["Device"],
+    dependencies=[Depends(PermissionChecker("view_device"))]
+    )
+def device_owner_history(mac_address: str):
     device_object = Device.from_mac_address(mac_address)
     check_for_null_or_deleted(device_object)
     device_id = device_object.id
     result = DeviceRequestRecord.device_owner_history(device_id)
     return normal_response(
-        message= "Successful",
+        message="Successful",
         data=result)
 
+
 @api_v1.get(
-    "/user", tags=["User"], dependencies=[Depends(PermissionChecker("view_user"))]
+    "/user",
+    tags=["User"],
+    dependencies=[Depends(PermissionChecker("view_user"))]
 )
 async def get_all_users(
     request: Request,
