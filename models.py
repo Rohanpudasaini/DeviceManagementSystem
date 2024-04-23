@@ -154,7 +154,7 @@ class User(Base):
 
         session.add(user_to_add)
         try_session_commit(session)
-        logger.info(msg=f"User with username {user_to_add.full_name} Added Sucesully")
+        logger.info(msg=f"User with username {user_to_add.full_name} Added Successfully")
         return (
             password,
             user_to_add.full_name,
@@ -676,6 +676,11 @@ class Device(Base):
     @classmethod
     def from_id(cls, id):
         return session.scalar(Select(cls).where(cls.id == id, cls.deleted == False))
+
+    @classmethod
+    def from_category(cls,category_name):
+        return session.scalars(Select(cls).where(cls.deleted == False, cls.type==category_name.upper())).all()
+
 
     @classmethod
     def from_mac_address(cls, mac_address):

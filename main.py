@@ -9,7 +9,6 @@ from auth.permission_checker import PermissionChecker
 from utils import constant_messages
 from utils.logger import logger
 from utils import send_mail
-import os
 from utils.helper_function import (
     check_for_null_or_deleted,
     error_response,
@@ -24,6 +23,7 @@ from utils.schema import (
     DeviceMaintenanceModel,
     DeviceRequestModel,
     DeviceReturnFromMaintenanceModel,
+    DeviceType,
     DeviceUpdateModel,
     LoginModel,
     RefreshTokenModel,
@@ -72,7 +72,7 @@ async def login(loginModel: LoginModel):
     return User.login(**loginModel.model_dump())
 
 
-@api_v1.post("/user/refresh_token", tags=["User"], status_code=201)
+@api_v1.post("/user/refresh-token", tags=["User"], status_code=201)
 async def get_new_accessToken(refreshToken: RefreshTokenModel):
     token = auth.decodeRefreshJWT(refreshToken.token)
     if token:
@@ -115,6 +115,10 @@ async def forget_password(
     return normal_response(message="Please check your email for temporary password")
 
 
+@api_v1.get("/device/categories")
+async def categories():
+    return normal_response(data =[i for i in DeviceType])
+
 @api_v1.get(
     "/device", tags=["Device"], dependencies=[Depends(PermissionChecker("view_device"))]
 )
@@ -125,16 +129,22 @@ async def get_all_device(
     mac_address: str | None = None,
     name: str | None = None,
     brand: str | None = None,
+    category: str |None = None
 ):
     await log_request(request)
+    if category:
+        result = Device.from_category(category)
+        count = len(result)
+        return normal_response(data={"pagination": {"total": count}, "result": result})
     if mac_address:
-        user_info = Device.from_mac_address(mac_address)
-        check_for_null_or_deleted(user_info, "mac_address", "device")
-        return normal_response(data=user_info)
+        device_info = Device.from_mac_address(mac_address)
+        check_for_null_or_deleted(device_info, "mac_address", "device")
+        return normal_response(data=device_info)
     if name or brand:
         device = Device.search_device(name, brand)
         if device:
             count = len(device)
+            logger.info({"pagination": {"total": count}, "result": device})
             return normal_response(
                 data={"pagination": {"total": count}, "result": device}
             )
@@ -249,7 +259,7 @@ async def return_device(
 
 
 @api_v1.post(
-    "/device/request_maintenance/{mac_address}",
+    "/device/request-maintenance/{mac_address}",
     tags=["Device"],
     status_code=201,
     dependencies=[Depends(PermissionChecker("request_device"))],
@@ -269,7 +279,7 @@ async def request_maintenance(
 
 
 @api_v1.patch(
-    "/device/return_maintenance/{mac_address}",
+    "/device/return-maintenance/{mac_address}",
     tags=["Device"],
     dependencies=[Depends(PermissionChecker("request_device"))],
 )
@@ -282,7 +292,7 @@ async def return_maintenance(
         )
     )
 
-@api_v1.get("/device/{mac_address}/maintenance_history", tags=["Device"], dependencies=[Depends(PermissionChecker("view_device"))])
+@api_v1.get("/device/{mac_address}/maintenance-history", tags=["Device"], dependencies=[Depends(PermissionChecker("view_device"))])
 def device_maintenance_history(mac_address:str):
     device_object = Device.from_mac_address(mac_address)
     check_for_null_or_deleted(device_object)
@@ -293,7 +303,7 @@ def device_maintenance_history(mac_address:str):
         data=result)
 
 
-@api_v1.get("/device/{mac_address}/owner_history", tags=["Device"], dependencies=[Depends(PermissionChecker("view_device"))])
+@api_v1.get("/device/{mac_address}/owner-history", tags=["Device"], dependencies=[Depends(PermissionChecker("view_device"))])
 def device_owner_history(mac_address:str):
     device_object = Device.from_mac_address(mac_address)
     check_for_null_or_deleted(device_object)
@@ -383,7 +393,7 @@ async def user_records(email):
     )
 
 
-@api_v1.post("/user/change_password", tags=["User"])
+@api_v1.post("/user/change-password", tags=["User"])
 def update_password(
     changePasswordModel: ChangePasswordModel, token=Depends(auth.validate_token)
 ):
@@ -394,14 +404,14 @@ def update_password(
     )
 
 
-@api_v1.get("/user/current_device", tags=["User"])
+@api_v1.get("/user/current-device", tags=["User"])
 async def current_device(token: str = Depends(auth.validate_token)):
     current_device = User.current_device(token)
     return normal_response(data=current_device)
 
 
 @api_v1.get(
-    "/user/{id}/current_device",
+    "/user/{id}/current-device",
     tags=["User"],
     dependencies=[Depends(PermissionChecker("all_access"))],
 )
