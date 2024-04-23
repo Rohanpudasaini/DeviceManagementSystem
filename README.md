@@ -74,7 +74,7 @@ This is a robust device management system API crafted using FastAPI for handling
 
    ```bash
    curl -X 'GET' \
-   'http://localhost:8000/api/v1/device?skip=0&limit=20' \
+   'http://localhost:8000/api/v1/device?page_number=1&page_size=20' \
    -H 'accept: application/json' \
    -H 'Authorization: Bearer your_access_token_here'
    ```
