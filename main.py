@@ -35,19 +35,13 @@ from utils.schema import (
 description = """
 Device Management API helps you maintain your devices and their users. 🚀
 
-Please go to  `/` to know about every available route.
 """
 
 app = FastAPI(
     title="DeviceManagementSystem",
     description=description,
-    summary="All your Device related stuff.",
+    summary="All the endpoint have been moved to `/api/v1/docs`. See you there.",
     version="0.0.1",
-    contact={
-        "name": "Vanilla Technology",
-        "url": "https://rohanpudasaini.com.np",
-        "email": "admin@rohanpudasaini.com.np",
-    },
     root_path="/api",
 )
 
@@ -56,11 +50,6 @@ api_v1 = FastAPI(
     description=description,
     summary="All your Device related stuff.",
     version="1.0.1",
-    contact={
-        "name": "Vanilla Technology",
-        "url": "https://rohanpudasaini.com.np",
-        "email": "admin@rohanpudasaini.com.np",
-    },
 )
 
 
