@@ -2,7 +2,12 @@ from fastapi import HTTPException
 from sqlalchemy import DateTime, ForeignKey, Integer, ARRAY, String, Select, func
 from sqlalchemy.orm import DeclarativeBase, mapped_column, Mapped, relationship
 from sqlalchemy.ext.hybrid import hybrid_property
-from utils.helper_function import check_for_null_or_deleted, generate_password, normal_response, error_response
+from utils.helper_function import (
+    check_for_null_or_deleted,
+    generate_password,
+    normal_response,
+    error_response,
+)
 from utils.schema import Designation, DeviceStatus, DeviceType, Purpose, RoleType
 import datetime
 from database.database_connection import session, try_session_commit
@@ -15,14 +20,14 @@ class Base(DeclarativeBase):
     pass
 
 
-class MaintainanceHistory(Base):
-    __tablename__ = "maintainance_history"
+class MaintenanceHistory(Base):
+    __tablename__ = "maintenance_history"
     id: Mapped[int] = mapped_column(primary_key=True)
     description: Mapped[str]
     purpose: Mapped[Purpose]
     cost: Mapped[int] = mapped_column(nullable=True)
     device_id: Mapped[int] = mapped_column(ForeignKey("device.id"))
-    devices = relationship("Device", back_populates="maintainance_record")
+    devices = relationship("Device", back_populates="maintenance_record")
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=True)
     reported_by = relationship(
         "User", foreign_keys=[user_id], backref="reported_device"
@@ -35,9 +40,9 @@ class MaintainanceHistory(Base):
         user_email = email
         device_to_repair_mac_address = mac_address
         logger.info(
-            f"User with email {user_email} have requested to repair device with mac address {device_to_repair_mac_address}.")
-        device_to_repair = Device.from_mac_address(
-            device_to_repair_mac_address)
+            f"User with email {user_email} have requested to repair device with mac address {device_to_repair_mac_address}."
+        )
+        device_to_repair = Device.from_mac_address(device_to_repair_mac_address)
         user = User.from_email(user_email)
         if not user or not device_to_repair:
             # if not device_to_repair.status == DeviceStatus.ACTIVE:
@@ -63,8 +68,9 @@ class MaintainanceHistory(Base):
         session.add(device_to_repair)
         try_session_commit(session)
         logger.info(
-            f"Sucessfully given device with mac address {device_to_repair_mac_address} to repair")
-        return 'Sucessfully Given For Repair'
+            f"Successfully given device with mac address {device_to_repair_mac_address} to repair"
+        )
+        return "Successfully Given For Repair"
 
     @classmethod
     def update(cls,mac_address, **kwargs):
@@ -80,9 +86,11 @@ class MaintainanceHistory(Base):
                 )
             )
         device_id = returned_device.id
-        record_to_update = session.scalar(Select(cls). where(
-            cls.device_id == device_id,
-            cls.returned_from_repair == None))
+        record_to_update = session.scalar(
+            Select(cls).where(
+                cls.device_id == device_id, cls.returned_from_repair == None
+            )
+        )
         for key, values in kwargs.items():
             if values is not None:
                 setattr(record_to_update, key, values)
@@ -93,7 +101,7 @@ class MaintainanceHistory(Base):
         session.add(record_to_update)
         session.add(returned_device)
         try_session_commit(session)
-        return f"The device with id {device_id} returned sucesfully"
+        return f"The device with id {device_id} returned Successfully"
 
 
 class User(Base):
@@ -102,8 +110,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(unique=True, nullable=False)
     password: Mapped[str] = mapped_column(nullable=False, deferred=True)
     temp_password: Mapped[str] = mapped_column(nullable=True, deferred=True)
-    temp_password_created_at = mapped_column(
-        DateTime, nullable=True, deferred=True)
+    temp_password_created_at = mapped_column(DateTime, nullable=True, deferred=True)
     first_name: Mapped[str]
     last_name: Mapped[str]
     phone_no: Mapped[str]
@@ -132,24 +139,27 @@ class User(Base):
     def add(cls, **kwargs):
         # username, email, password, message
         password = generate_password(12)
-        kwargs['password'] = auth.hash_password(password)
-        role_to_add = kwargs.get('role')
-        kwargs.pop('role')
+        kwargs["password"] = auth.hash_password(password)
+        role_to_add = kwargs.get("role")
+        kwargs.pop("role")
         user_to_add = cls(**kwargs)
         if role_to_add:
             role = Role.from_name(role_to_add)
             if role:
                 user_to_add.role_id = [role]
             else:
-                role = Role.from_name('viewer')
+                role = Role.from_name("viewer")
                 user_to_add.role_id = [role]
 
         session.add(user_to_add)
         try_session_commit(session)
-        logger.info(
-            msg=f'User with username {user_to_add.full_name} Added Sucesully')
-        return password, user_to_add.full_name, normal_response(
-            message='User added sucessfully, Please find your temporary password in mail'
+        logger.info(msg=f"User with username {user_to_add.full_name} Added Sucesully")
+        return (
+            password,
+            user_to_add.full_name,
+            normal_response(
+                message="User added successfully, Please find your temporary password in mail"
+            ),
         )
 
     @classmethod
@@ -157,7 +167,7 @@ class User(Base):
         user_to_update = cls.from_email(email)
         if user_to_update:
             if user_to_update.default_password:
-                if kwargs['new_password'] == user_to_update.password:
+                if kwargs["new_password"] == user_to_update.password:
                     logger.warning("Same password as old password")
                     raise HTTPException(
                         status_code=409,
@@ -171,8 +181,8 @@ class User(Base):
                     user_to_update.default_password = False
                     session.add(user_to_update)
                     try_session_commit(session)
-                    logger.info("Password Changed Sucesfully")
-                    return "Password Changed Sucesfully, Enjoy your account"
+                    logger.info("Password Changed Successfully")
+                    return "Password Changed Successfully, Enjoy your account"
 
                 raise HTTPException(
                     status_code=401,
@@ -182,8 +192,10 @@ class User(Base):
                     )
                 )
 
-            if auth.verify_password(kwargs['old_password'], user_to_update.password):
-                if auth.verify_password(kwargs['new_password'], user_to_update.password):
+            if auth.verify_password(kwargs["old_password"], user_to_update.password):
+                if auth.verify_password(
+                    kwargs["new_password"], user_to_update.password
+                ):
                     logger.warning("Same password as old password")
                     raise HTTPException(
                         status_code=409,
@@ -196,8 +208,8 @@ class User(Base):
                     kwargs['new_password'])
                 user_to_update.default_password = False
                 try_session_commit(session)
-                logger.info("Password Changed Sucesfully")
-                return "Password Changed Sucesfully, Enjoy your account"
+                logger.info("Password Changed Successfully")
+                return "Password Changed Successfully, Enjoy your account"
 
             logger.warning("Password don't match")
             raise HTTPException(
@@ -216,7 +228,7 @@ class User(Base):
                                     error="New password and confirm password must be same"
                                 ))
         user_object = cls.from_email(email)
-        check_for_null_or_deleted(user_object, 'user', 'email')
+        check_for_null_or_deleted(user_object, "user", "email")
         password = auth.hash_password(new_password)
         user_object.password = password
         user_object.temp_password = None
@@ -224,7 +236,7 @@ class User(Base):
         user_object.default_password = False
         session.add(user_object)
         try_session_commit(session)
-        return normal_response(message="Password changed sucessfully!")
+        return normal_response(message="Password changed successfully!")
 
     @classmethod
     def update(cls, email, **kwargs):
@@ -240,13 +252,13 @@ class User(Base):
                 setattr(user_to_update, key, value)
         session.add(user_to_update)
         try_session_commit(session)
-        logger.info(msg=f'{user_to_update.full_name} updated Sucessful')
-        return 'Update Sucessful'
+        logger.info(msg=f"{user_to_update.full_name} updated Successful")
+        return "Update Successful"
 
     @classmethod
     def current_device(cls, token: dict):
 
-        email = token['user_identifier']
+        email = token["user_identifier"]
         if not email:
             # return normal_response(message ="Authentication failed .please check your token !")
             raise HTTPException(status_code=401, detail=error_response(
@@ -307,15 +319,15 @@ class User(Base):
         user_to_delete.deleted_at = datetime.datetime.now(tz=datetime.UTC)
         session.add(user_to_delete)
         try_session_commit(session)
-        logger.info(msg=f"{user_to_delete.full_name} deleted Sucessfully")
-        return "Deleted Sucessfully"
+        logger.info(msg=f"{user_to_delete.full_name} deleted Successfully")
+        return "Deleted Successfully"
 
     @classmethod
     def get_all(cls, skip, limit):
-        statement = Select(cls).where(
-            cls.deleted == False).offset(skip).limit(limit)
-        count = session.scalar(Select(func.count()).select_from(
-            cls).where(cls.deleted == False))
+        statement = Select(cls).where(cls.deleted == False).offset(skip).limit(limit)
+        count = session.scalar(
+            Select(func.count()).select_from(cls).where(cls.deleted == False)
+        )
         return session.scalars(statement).all(), count
 
     @classmethod
@@ -324,26 +336,26 @@ class User(Base):
 
     @classmethod
     def from_email(cls, email):
-        return session.scalar(Select(cls).where(cls.email == email, cls.deleted == False))
+        return session.scalar(
+            Select(cls).where(cls.email == email, cls.deleted == False)
+        )
 
     @classmethod
     def login(cls, **kwargs):
         user_object = cls.from_email(kwargs["email"])
         check_for_null_or_deleted(user_object, "email", "User")
-        is_valid = auth.verify_password(
-            kwargs["password"], user_object.password)
+        is_valid = auth.verify_password(kwargs["password"], user_object.password)
         if is_valid:
-            access_token, refresh_token = auth.generate_JWT(
-                email=user_object.email)
+            access_token, refresh_token = auth.generate_JWT(email=user_object.email)
             if not user_object.default_password:
                 # print(user_object.role_id)
                 role_id = session.scalars(Select(UserRole.role_id).where(UserRole.user_id == user_object.id)).first()
                 role_name = Role.name_from_id(role_id)
                 user_object.temp_password = None
                 user_object.temp_password_created_at = None
-                logger.info("Login Sucessfull")
+                logger.info("Login Successful")
                 return normal_response(
-                    message='Login Sucessfull',
+                    message="Login Successful",
                     data={
                         'access_token': access_token,
                         'refresh_token': refresh_token,
@@ -354,17 +366,16 @@ class User(Base):
                     })
             logger.warning("Default password, redirection to change password")
             return normal_response(
-                message="Defauls password used to login, please change password, use the below provided token to reset password at /reset_password",
-                data={
-                    'token': auth.generate_otp_JWT(kwargs["email"])
-                }
+                message="Default password used to login, please change password, use the below provided token to reset password at /reset_password",
+                data={"token": auth.generate_otp_JWT(kwargs["email"])},
             )
         logger.error("Invalid Credentials, checking temp password")
         if user_object.temp_password:
-            result = auth.verify_password(
-                kwargs['password'], user_object.temp_password)
+            result = auth.verify_password(kwargs["password"], user_object.temp_password)
             if result:
-                if (user_object.temp_password_created_at + datetime.timedelta(days=5)).date() > datetime.datetime.now().date():
+                if (
+                    user_object.temp_password_created_at + datetime.timedelta(days=5)
+                ).date() > datetime.datetime.now().date():
                     access_token = auth.generate_otp_JWT(kwargs["email"])
                     return normal_response(
                         message="Temporary password is used, please use this access token to change password at /reset_password.",
@@ -390,8 +401,7 @@ class DeviceRequestRecord(Base):
     )
     returned_date = mapped_column(DateTime, nullable=True, default=None)
     expected_return_date = mapped_column(DateTime)
-    device_id: Mapped[int] = mapped_column(
-        ForeignKey("device.id"), nullable=True)
+    device_id: Mapped[int] = mapped_column(ForeignKey("device.id"), nullable=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=True)
     device = relationship("Device", backref="record", foreign_keys=[device_id])
     user = relationship("User", backref="record", foreign_keys=[user_id])
@@ -421,7 +431,7 @@ class DeviceRequestRecord(Base):
         )
         # device_to_allot = Device.from_id(device_id)
         if not device_to_allot:
-            logger.error(f"Can't find the device with deviceid {device_id}")
+            logger.error(f"Can't find the device with device id {device_id}")
             raise HTTPException(
                 status_code=404,
                 detail=error_response(
@@ -445,8 +455,7 @@ class DeviceRequestRecord(Base):
         if not device_to_allot.deleted:
             if device_to_allot.available:
                 if device_to_allot.status.value != "active":
-                    logger.error(
-                        "The device with device id {device_id} is not active")
+                    logger.error("The device with device id {device_id} is not active")
                     raise HTTPException(
                         status_code=404,
                         detail=error_response(
@@ -469,9 +478,9 @@ class DeviceRequestRecord(Base):
                 session.add(add_record)
                 try_session_commit(session)
                 logger.info(
-                    f"Sucessfully allot device with id {device_id} to user with email {user_email}"
+                    f"Successfully allot device with id {device_id} to user with email {user_email}"
                 )
-                return "sucessfully alloted device"
+                return "successfully alloted device"
             logger.error("The device is no longer available")
             raise HTTPException(
                 status_code=409,
@@ -535,18 +544,19 @@ class DeviceRequestRecord(Base):
         device_to_return.available = True
         session.add(device_to_return)
         try_session_commit(session)
-        record_to_update = session.scalar(Select(cls).where(
-            cls.device_id == device_id,
-            cls.user_id == returned_user.id,
-            cls.returned_date == None
-        ))
+        record_to_update = session.scalar(
+            Select(cls).where(
+                cls.device_id == device_id,
+                cls.user_id == returned_user.id,
+                cls.returned_date == None,
+            )
+        )
         if record_to_update:
-            record_to_update.returned_date = datetime.datetime.now(
-                tz=datetime.UTC)
+            record_to_update.returned_date = datetime.datetime.now(tz=datetime.UTC)
             session.add(record_to_update)
             try_session_commit(session)
             logger.info(f"{user_email} returned device with id {device_id}")
-            return "Device Returned Sucessfully"
+            return "Device Returned Successfully"
         logger.error(
             f"The user {user_email} have already returned the device with id {device_id}"
         )
@@ -582,8 +592,7 @@ class Device(Base):
     specification = mapped_column(ARRAY(String))
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=True)
     user = relationship("User", back_populates="devices")
-    maintainance_record = relationship(
-        "MaintainanceHistory", back_populates="devices")
+    maintenance_record = relationship("MaintenanceHistory", back_populates="devices")
     # record = relationship('DeviceRequestRecord', back_populates='device')
 
     @classmethod
@@ -591,9 +600,8 @@ class Device(Base):
         device_to_add = cls(**kwargs)
         session.add(device_to_add)
         try_session_commit(session)
-        logger.info({"sucess": "Device Added Sucesfully",
-                    "device_details": kwargs})
-        return "Device Added Sucesfully"
+        logger.info({"success": "Device Added Successfully", "device_details": kwargs})
+        return "Device Added Successfully"
 
     @classmethod
     def update(cls, mac_address, **kwargs):
@@ -614,16 +622,16 @@ class Device(Base):
                 setattr(device_to_update, key, value)
         session.add(device_to_update)
         try_session_commit(session)
-        logger.info({"sucess": "Device Updated Sucesfully",
-                    "device_details": kwargs})
-        return "Update Sucessful"
+        logger.info(
+            {"success": "Device Updated Successfully", "device_details": kwargs}
+        )
+        return "Update Successful"
 
     @classmethod
     def delete(cls, **kwargs):
         device_to_delete = cls.from_mac_address(kwargs["identifier"])
         if device_to_delete.user_id:
-            logger.info(
-                "The device already assigned to some user, can't delete it")
+            logger.info("The device already assigned to some user, can't delete it")
             raise HTTPException(
                 status_code=409,
                 detail=error_response(
@@ -632,7 +640,8 @@ class Device(Base):
                     ))
         if device_to_delete.status == DeviceStatus.INACTIVE:
             logger.info(
-                "The device already might be in repair or not available, can't delete it")
+                "The device already might be in repair or not available, can't delete it"
+            )
             raise HTTPException(
                 status_code=409,
                 detail=error_response(
@@ -645,9 +654,10 @@ class Device(Base):
         device_to_delete.deleted_at = datetime.datetime.now(tz=datetime.UTC)
         session.add(device_to_delete)
         try_session_commit(session)
-        logger.info({"sucess": "Device Deleted Sucesfully",
-                    "device_details": kwargs})
-        return "Deleted Sucessfully"
+        logger.info(
+            {"success": "Device Deleted Successfully", "device_details": kwargs}
+        )
+        return "Deleted Successfully"
 
     @classmethod
     def from_id(cls, id):
@@ -655,7 +665,67 @@ class Device(Base):
 
     @classmethod
     def from_mac_address(cls, mac_address):
-        return session.scalar(Select(cls).where(cls.mac_address == mac_address, cls.deleted == False))
+        return session.scalar(
+            Select(cls).where(cls.mac_address == mac_address, cls.deleted == False)
+        )
+
+    # TODO:validation is required to do there ? if the concept is right then we will continue right yes !
+
+    @classmethod  # query means the device right ?
+    def get_all_devices(
+        cls, name=None, brand=None, page_num: int = 1, page_size: int = 10
+    ):
+        query = session.query(cls).filter(cls.deleted == False)
+
+        if name:
+            query = query.filter(cls.name.icontains(name))
+        if brand:
+            query = query.filter(cls.brand.icontains(brand))
+
+        total_devices = query.count()
+        devices = query.offset((page_num - 1) * page_size).limit(page_size).all()
+
+        if not devices and (name or brand):
+            raise HTTPException(
+                status_code=404,
+                detail="Device with the specified name and brand not found !",
+            )
+
+        response = {
+            "pagination": {
+                "total": total_devices,
+                "count": len(devices),
+            },
+            "devices": devices,
+        }
+
+        if page_num > 1:
+
+            response["pagination"][
+                "previous"
+            ] = f"/devices?page_num={page_num-1}&page_size={page_size}"
+            devices
+        else:
+            response["pagination"]["previous"] = None
+
+        if total_devices > page_num * page_size:
+            response["pagination"][
+                "next"
+            ] = f"/devices?page_num={page_num+1}&page_size={page_size}"
+        else:
+            raise HTTPException(status_code=404, detail="No result found  !")
+
+    @classmethod
+    def get_all(cls, page_number, page_size):
+        statement = Select(cls).where(
+            cls.available == True,
+            cls.deleted == False).offset(((page_number-1)*page_size)).limit(page_size)
+        count = session.scalar(Select(func.count()).select_from(cls).where(
+            cls.available == True,
+            cls.deleted == False
+        ))
+        result = session.scalars(statement).all()
+        return result, count
 
     @classmethod
     def search_device(
@@ -689,18 +759,6 @@ class Device(Base):
             return devices
         else:
             raise HTTPException(status_code=404, detail="No result found  !")
-
-    @classmethod
-    def get_all(cls, page_number, page_size):
-        statement = Select(cls).where(
-            cls.available == True,
-            cls.deleted == False).offset(((page_number-1)*page_size)).limit(page_size)
-        count = session.scalar(Select(func.count()).select_from(cls).where(
-            cls.available == True,
-            cls.deleted == False
-        ))
-        result = session.scalars(statement).all()
-        return result, count
 
 
 class Role(Base):
@@ -767,6 +825,5 @@ class UserRole(Base):
 class RolePermission(Base):
     __tablename__ = "roles_permissions"
     id: Mapped[int] = mapped_column(primary_key=True)
-    permission_id = mapped_column(
-        "permission_id", Integer, ForeignKey("permission.id"))
+    permission_id = mapped_column("permission_id", Integer, ForeignKey("permission.id"))
     role_id = mapped_column("role_id", Integer, ForeignKey("role.id"))

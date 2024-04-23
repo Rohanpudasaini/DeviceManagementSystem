@@ -3,7 +3,7 @@ from math import ceil
 from fastapi import Depends, FastAPI, Form, HTTPException, Request, BackgroundTasks
 from pydantic import EmailStr
 from database.database_connection import try_session_commit, session
-from models import Device, DeviceRequestRecord, MaintainanceHistory, User
+from models import Device, DeviceRequestRecord, MaintenanceHistory, User
 from auth import auth
 from auth.permission_checker import PermissionChecker
 from utils import constant_messages
@@ -21,9 +21,9 @@ from utils.schema import (
     ChangePasswordModel,
     DeviceAddModel,
     DeleteModel,
-    DeviceMaintainanceModel,
+    DeviceMaintenanceModel,
     DeviceRequestModel,
-    DeviceReturnFromMaintainanceModel,
+    DeviceReturnFromMaintenanceModel,
     DeviceUpdateModel,
     LoginModel,
     RefreshTokenModel,
@@ -32,11 +32,10 @@ from utils.schema import (
     UserUpdateModel,
 )
 
-
 description = """
 Device Management API helps you maintain your devices and their users. 🚀
 
-Please go to  `/` to know about ervery availabe route.
+Please go to  `/` to know about every available route.
 """
 
 app = FastAPI(
@@ -61,7 +60,7 @@ api_v1 = FastAPI(
         "name": "Vanilla Technology",
         "url": "https://rohanpudasaini.com.np",
         "email": "admin@rohanpudasaini.com.np",
-    }
+    },
 )
 
 
@@ -91,7 +90,7 @@ async def login(loginModel: LoginModel):
 
 @api_v1.post("/user/refresh_token", tags=["User"], status_code=201)
 async def get_new_accessToken(refreshToken: RefreshTokenModel):
-    token = auth.decodRefreshJWT(refreshToken.token)
+    token = auth.decodeRefreshJWT(refreshToken.token)
     if token:
         return normal_response(data={"access_token": token})
     raise HTTPException(
@@ -264,32 +263,32 @@ async def return_device(
 
 
 @api_v1.post(
-    "/device/request_maintainance/{mac_address}",
+    "/device/request_maintenance/{mac_address}",
     tags=["Device"],
     status_code=201,
     dependencies=[Depends(PermissionChecker("request_device"))],
 )
-async def request_maintainance(
+async def request_maintenance(
     mac_address:str,
-    deviceMaintainanceModel: DeviceMaintainanceModel, token=Depends(auth.validate_token)
+    deviceMaintenanceModel: DeviceMaintenanceModel, token=Depends(auth.validate_token)
 ):
     return normal_response(
-        message=MaintainanceHistory.add(
+        message=MaintenanceHistory.add(
             mac_address = mac_address,
             email=token.get("user_identifier"),
-            **deviceMaintainanceModel.model_dump()
+            **deviceMaintenanceModel.model_dump()
         )
     )
 
 
 @api_v1.patch(
-    "/device/return_maintainance/{mac_address}",
+    "/device/return_maintenance/{mac_address}",
     tags=["Device"],
     dependencies=[Depends(PermissionChecker("request_device"))],
 )
-async def return_maintainance(mac_address:str,deviceReturn: DeviceReturnFromMaintainanceModel):
+async def return_maintenance(mac_address:str,deviceReturn: DeviceReturnFromMaintenanceModel):
     return normal_response(
-        message=MaintainanceHistory.update(
+        message=MaintenanceHistory.update(
             mac_address=mac_address,
             **deviceReturn.model_dump())
     )
@@ -312,13 +311,8 @@ async def get_all_users(
     result, count = User.get_all(skip=skip, limit=limit)
     return normal_response(
         data={
-            "pagination":
-                {
-                    "total": count,
-                    "skip": skip,
-                    "limit": limit
-                },
-            "result": result
+            "pagination": {"total": count, "skip": skip, "limit": limit},
+            "result": result,
         }
     )
 
@@ -329,7 +323,9 @@ async def get_all_users(
     tags=["User"],
     dependencies=[Depends(PermissionChecker("create_user"))],
 )
-async def add_user(userAddModel: UserAddModel, request: Request, backgroundTasks: BackgroundTasks):
+async def add_user(
+    userAddModel: UserAddModel, request: Request, backgroundTasks: BackgroundTasks
+):
     await log_request(request)
     password, username, response = User.add(**userAddModel.model_dump())
     backgroundTasks.add_task(
@@ -384,7 +380,7 @@ async def current_device(token: str = Depends(auth.validate_token)):
     tags=["User"],
     dependencies=[Depends(PermissionChecker("all_access"))],
 )
-async def current_devices_user_id(id):
+async def current_devices_user_id(id: int):
     current_devices = User.current_devices_by_user_id(id)
     return current_devices
 

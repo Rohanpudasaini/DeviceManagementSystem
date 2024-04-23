@@ -18,7 +18,7 @@ class RoleType(Enum):
 
 class DeviceType(Enum):
     LAPTOP = "laptop"
-    TABLET = "lablet"
+    TABLET = "tablet"
     PHONE = "phone"
     DESKTOP = "desktop"
 
@@ -29,12 +29,12 @@ class DeviceStatus(Enum):
 
 
 class Designation(Enum):
-    manager = 'manager'
-    developer = 'developer'
-    hr = 'hr'
-    it_support = 'it_support'
-    ceo = 'ceo'
-    viewer = 'viewer'
+    manager = "manager"
+    developer = "developer"
+    hr = "hr"
+    it_support = "it_support"
+    ceo = "ceo"
+    viewer = "viewer"
 
 
 class RefreshTokenModel(BaseModel):
@@ -68,8 +68,7 @@ class DeviceAddModel(BaseModel):
     product_images: list[str] | None = None
     type: DeviceType = DeviceType.LAPTOP
     specification: list[str] | None = None
-    purchase_date: datetime.datetime = datetime.datetime.now(
-        datetime.UTC).date()
+    purchase_date: datetime.datetime = datetime.datetime.now(datetime.UTC).date()
 
 
 class DeviceRequestModel(BaseModel):
@@ -77,20 +76,19 @@ class DeviceRequestModel(BaseModel):
     mac_address: str
 
 
-class DeviceMaintainanceModel(BaseModel):
+class DeviceMaintenanceModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
     purpose: Purpose
     description: str
     cost: float | None = None
-    sent_for_repair: datetime.datetime = datetime.datetime.now(
-        datetime.UTC).date()
+    mac_address: str
+    sent_for_repair: datetime.datetime = datetime.datetime.now(datetime.UTC).date()
 
 
-class DeviceReturnFromMaintainanceModel(BaseModel):
+class DeviceReturnFromMaintenanceModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
     cost: float
-    returned_from_repair: datetime.datetime = datetime.datetime.now(
-        datetime.UTC).date()
+    returned_from_repair: datetime.datetime = datetime.datetime.now(datetime.UTC).date()
 
 
 class DeviceUpdateModel(BaseModel):

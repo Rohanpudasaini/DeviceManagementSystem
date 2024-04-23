@@ -10,32 +10,31 @@ from utils.helper_function import error_response
 from utils import constant_messages
 contain_header = HTTPBearer(auto_error=False)
 
-ACCESS_SECRET = os.getenv('secret_access')
-REFRESH_SECRET = os.getenv('secret_refresh')
-ALGORITHM = os.getenv('algorithm')
-OTP_SECRET = os.getenv('otp_secret')
+ACCESS_SECRET = os.getenv("SECRET_ACCESS")
+REFRESH_SECRET = os.getenv("SECRET_REFRESH")
+ALGORITHM = os.getenv("ALGORITHM")
+OTP_SECRET = os.getenv("OTP_SECRET")
 
 
-def generate_JWT(email: str,):
+def generate_JWT(
+    email: str,
+):
     payload = {
-        'user_identifier': email,
-        'expiry': time.time() + 1200
+        "user_identifier": email,
+        "expiry": time.time() + 1200,
         # 'expiry': time.time() + 240
     }
     encoded_access = jwt.encode(payload, ACCESS_SECRET, algorithm=ALGORITHM)
-    payload = {
-        'user_identifier': email,
-        'expiry': time.time() + 604800
-    }
+    payload = {"user_identifier": email, "expiry": time.time() + 604800}
     encoded_refresh = jwt.encode(payload, REFRESH_SECRET, ALGORITHM)
     return encoded_access, encoded_refresh
 
 
-def decodAccessJWT(token: str):
+def decodeAccessJWT(token: str):
     try:
         decode_token = jwt.decode(token, ACCESS_SECRET, ALGORITHM)
         # return decode_token if decode_token['expiry'] >= time.time() else None
-        if decode_token['expiry'] >= time.time():
+        if decode_token["expiry"] >= time.time():
             return decode_token
         else:
             raise HTTPException(
@@ -55,12 +54,12 @@ def decodAccessJWT(token: str):
         )
 
 
-def decodRefreshJWT(token: str):
+def decodeRefreshJWT(token: str):
     try:
         decode_token = jwt.decode(token, REFRESH_SECRET, ALGORITHM)
         # return decode_token if decode_token['expiry'] >= time.time() else None
-        if decode_token['expiry'] >= time.time():
-            new_token, _ = generate_JWT(decode_token['user_identifier'])
+        if decode_token["expiry"] >= time.time():
+            new_token, _ = generate_JWT(decode_token["user_identifier"])
             return new_token
         else:
             raise HTTPException(
@@ -85,9 +84,9 @@ def decodRefreshJWT(token: str):
 
 def generate_otp_JWT(email: str):
     payload = {
-        'user_identifier': email,
+        "user_identifier": email,
         # 'expiry': time.time() + 1200
-        'expiry': time.time() + 1240
+        "expiry": time.time() + 1240,
     }
     encoded_otp = jwt.encode(payload, OTP_SECRET, algorithm=ALGORITHM)
     return encoded_otp
@@ -95,9 +94,8 @@ def generate_otp_JWT(email: str):
 
 def decode_otp_jwt(token: str):
     try:
-        decode_token = jwt.decode(
-            token=token, key=OTP_SECRET, algorithms=ALGORITHM)
-        if decode_token['expiry'] >= time.time():
+        decode_token = jwt.decode(token=token, key=OTP_SECRET, algorithms=ALGORITHM)
+        if decode_token["expiry"] >= time.time():
             return decode_token
         else:
             raise HTTPException(
@@ -119,21 +117,21 @@ def decode_otp_jwt(token: str):
 
 
 def hash_password(password):
-    pwd_bytes = password.encode('UTF-8')
+    pwd_bytes = password.encode("UTF-8")
     salt = bcrypt.gensalt()
     hashed_password = bcrypt.hashpw(password=pwd_bytes, salt=salt)
     return hashed_password.decode()
 
 
 def verify_password(plain_password: str, hashed_password):
-    password_byte_enc = plain_password.encode('utf-8')
-    hashed_password = hashed_password.encode('utf-8')
+    password_byte_enc = plain_password.encode("utf-8")
+    hashed_password = hashed_password.encode("utf-8")
     return bcrypt.checkpw(password_byte_enc, hashed_password)
 
 
 def validate_token(token: Annotated[HTTPAuthorizationCredentials, Depends(contain_header)]):
     if token:
-        return decodAccessJWT(token.credentials)
+        return decodeAccessJWT(token.credentials)
     raise HTTPException(
         status_code= 401,
         detail= error_response(
