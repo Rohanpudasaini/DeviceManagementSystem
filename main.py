@@ -58,13 +58,8 @@ async def home():
     return "Welcome Home"
 
 
-@api_v1.post(
-    "/password/reset",
-    tags=["Authentication"]
-    )
-def reset_password(
-    token=Form(), new_password=Form(), confirm_password=Form()
-):
+@api_v1.post("/password/reset", tags=["Authentication"])
+def reset_password(token=Form(), new_password=Form(), confirm_password=Form()):
     email = auth.decode_otp_jwt(token)
     email = email["user_identifier"]
     result = User.reset_password(email, new_password, confirm_password)
@@ -104,7 +99,6 @@ async def forget_password(
             detail=error_response(
                 message=constant_messages.REQUEST_NOT_FOUND,
                 error=constant_messages.request_not_found("user", "email"),
-
             ),
         )
     password = generate_password(12)
@@ -129,8 +123,8 @@ async def get_all_device(
     page_number: int | None = 1,
     page_size: int | None = 20,
     mac_address: str | None = None,
-    name:str| None = None,
-    brand : str| None = None
+    name: str | None = None,
+    brand: str | None = None,
 ):
     await log_request(request)
     if mac_address:
@@ -138,47 +132,46 @@ async def get_all_device(
         check_for_null_or_deleted(user_info, "mac_address", "device")
         return normal_response(data=user_info)
     if name or brand:
-        device = Device.search_device(name,brand)
+        device = Device.search_device(name, brand)
         if device:
             count = len(device)
             return normal_response(
-                data={
-                    "pagination":
-                        {
-                            "total": count
-                        },
-                    'result': device}
-                )
+                data={"pagination": {"total": count}, "result": device}
+            )
         else:
             return error_response(
-                message = constant_messages.REQUEST_NOT_FOUND,
-                error = constant_messages.request_not_found('Device', "Brand or Name")
+                message=constant_messages.REQUEST_NOT_FOUND,
+                error=constant_messages.request_not_found("Device", "Brand or Name"),
             )
 
     result, count = Device.get_all(page_number=page_number, page_size=page_size)
-    final_page = ceil(count/page_size)
+    final_page = ceil(count / page_size)
     logger.info([singleresult.__dict__ for singleresult in result])
     next_page, previous_page = None, None
     if page_size * page_number < count:
-        next_page = f'/api/v1/device?page_number={page_number+1}&page_size={page_size}'
+        next_page = f"/api/v1/device?page_number={page_number+1}&page_size={page_size}"
     if page_number > 1:
-        if page_number >final_page:
-            previous_page = f'/api/v1/device?page_number={final_page}&page_size={page_size}'
+        if page_number > final_page:
+            previous_page = (
+                f"/api/v1/device?page_number={final_page}&page_size={page_size}"
+            )
         else:
-            previous_page = f'/api/v1/device?page_number={page_number-1}&page_size={page_size}'
-    
+            previous_page = (
+                f"/api/v1/device?page_number={page_number-1}&page_size={page_size}"
+            )
+
     return normal_response(
         data={
-            "pagination":
-                {
-                    "total": count,
-                    "page_number": page_number,
-                    "page_size": page_size,
-                    "next_page": next_page,
-                    "previous_page":previous_page,
-                    "final_page": final_page
-                },
-            'result': result}
+            "pagination": {
+                "total": count,
+                "page_number": page_number,
+                "page_size": page_size,
+                "next_page": next_page,
+                "previous_page": previous_page,
+                "final_page": final_page,
+            },
+            "result": result,
+        }
     )
 
 
@@ -198,9 +191,13 @@ async def add_device(deviceAddModel: DeviceAddModel, request: Request):
     tags=["Device"],
     dependencies=[Depends(PermissionChecker("update_device"))],
 )
-async def update_device(deviceUpdateModel: DeviceUpdateModel, request: Request, mac_address: str):
+async def update_device(
+    deviceUpdateModel: DeviceUpdateModel, request: Request, mac_address: str
+):
     await log_request(request)
-    return normal_response(message=Device.update(mac_address, **deviceUpdateModel.model_dump()))
+    return normal_response(
+        message=Device.update(mac_address, **deviceUpdateModel.model_dump())
+    )
 
 
 @api_v1.delete(
@@ -258,14 +255,15 @@ async def return_device(
     dependencies=[Depends(PermissionChecker("request_device"))],
 )
 async def request_maintenance(
-    mac_address:str,
-    deviceMaintenanceModel: DeviceMaintenanceModel, token=Depends(auth.validate_token)
+    mac_address: str,
+    deviceMaintenanceModel: DeviceMaintenanceModel,
+    token=Depends(auth.validate_token),
 ):
     return normal_response(
         message=MaintenanceHistory.add(
-            mac_address = mac_address,
+            mac_address=mac_address,
             email=token.get("user_identifier"),
-            **deviceMaintenanceModel.model_dump()
+            **deviceMaintenanceModel.model_dump(),
         )
     )
 
@@ -275,11 +273,13 @@ async def request_maintenance(
     tags=["Device"],
     dependencies=[Depends(PermissionChecker("request_device"))],
 )
-async def return_maintenance(mac_address:str,deviceReturn: DeviceReturnFromMaintenanceModel):
+async def return_maintenance(
+    mac_address: str, deviceReturn: DeviceReturnFromMaintenanceModel
+):
     return normal_response(
         message=MaintenanceHistory.update(
-            mac_address=mac_address,
-            **deviceReturn.model_dump())
+            mac_address=mac_address, **deviceReturn.model_dump()
+        )
     )
 
 
@@ -327,9 +327,13 @@ async def add_user(
 
 
 @api_v1.patch(
-    "/user/{email}", tags=["User"], dependencies=[Depends(PermissionChecker("update_user"))]
+    "/user/{email}",
+    tags=["User"],
+    dependencies=[Depends(PermissionChecker("update_user"))],
 )
-async def update_user(userUpdateModel: UserUpdateModel, request: Request, email: EmailStr):
+async def update_user(
+    userUpdateModel: UserUpdateModel, request: Request, email: EmailStr
+):
     await log_request(request)
     return normal_response(message=User.update(email, **userUpdateModel.model_dump()))
 
@@ -345,6 +349,18 @@ async def delete_user(userDeleteModel: DeleteModel, request: Request):
 @api_v1.get("/user/me", tags=["User"])
 async def my_info(token=Depends(auth.validate_token)):
     return normal_response(data=User.from_email(token["user_identifier"]))
+
+
+@api_v1.get("/user/record/", tags=["User"])
+async def user_records(email):
+    user_object = User.from_email(email)
+    check_for_null_or_deleted(user_object)
+
+    user_id = user_object.id
+
+    return normal_response(
+        message="Successful", data=DeviceRequestRecord.user_record(user_id)
+    )
 
 
 @api_v1.post("/user/change_password", tags=["User"])
