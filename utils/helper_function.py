@@ -12,19 +12,19 @@ def check_for_null_or_deleted(object, email='identifier', name='Object'):
         if object.deleted:
             raise HTTPException(
                 status_code=404,
-                detail=error_response(error={
-                    'error_type': constant_messages.DELETED_ERROR,
-                    'error_message': constant_messages.DELETED_ERROR_MESSAGE + f' The {object.__class__} was deleted at {object.deleted_at}'
-                }
+                detail=error_response(
+                    message=constant_messages.DELETED_ERROR,
+                    error=constant_messages.DELETED_ERROR_MESSAGE +
+                    f' The {object.__class__} was deleted at {object.deleted_at}'
                 )
             )
     else:
         raise HTTPException(
             status_code=404,
-            detail=error_response(error={
-                'error_type': constant_messages.REQUEST_NOT_FOUND,
-                'error_message': constant_messages.request_not_found(name, email)
-            }
+            detail=error_response(
+                message= constant_messages.REQUEST_NOT_FOUND,
+                error=constant_messages.request_not_found(name, email)
+            
             )
         )
 
@@ -57,7 +57,7 @@ def generate_password(length):
     return password
 
 
-def error_response(message="", error="", data=""):
+def error_response(message=None, error=None, data=None):
     return {
         "message": message,
         "error": error,
@@ -65,11 +65,9 @@ def error_response(message="", error="", data=""):
     }
 
 
-def normal_response(message="", error="", data=""):
+def normal_response(message=None, data=None, error=None):
     return {
-        'detail': {
-            "message": message,
-            "error": error,
-            "data": data
-        }
+        "message": message,
+        "error": error,
+        "data": data
     }
