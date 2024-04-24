@@ -335,9 +335,22 @@ class User(Base):
         logger.info(msg=f"{user_to_delete.full_name} deleted Successfully")
         return "Deleted Successfully"
 
+    # @classmethod
+    # def get_all(cls, skip, limit):
+    #     statement = Select(cls).where(cls.deleted == False).offset(skip).limit(limit)
+    #     count = session.scalar(
+    #         Select(func.count()).select_from(cls).where(cls.deleted == False)
+    #     )
+    #     return session.scalars(statement).all(), count
+    
     @classmethod
-    def get_all(cls, skip, limit):
-        statement = Select(cls).where(cls.deleted == False).offset(skip).limit(limit)
+    def get_all(cls, page_number, page_size):
+        statement = (
+            Select(cls)
+            .where(cls.deleted == False)
+            .offset(((page_number - 1) * page_size))
+            .limit(page_size)
+        )
         count = session.scalar(
             Select(func.count()).select_from(cls).where(cls.deleted == False)
         )

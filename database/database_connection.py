@@ -24,36 +24,20 @@ session = Session(bind=engine)
 
 
 # Base.metadata.create_all(engine)
-def try_session_commit(session, delete=False):
-    if not delete:
-        try:
-            session.commit()
-            return
-        except IntegrityError as e:
-            logger.error(print(e._message()))
-            session.rollback()
-            raise HTTPException(
-                status_code=409,
-                detail={
-                    "error": {
-                        "error_type": constant_messages.INTEGRITY_ERROR,
-                        "error_message": constant_messages.INTEGRITY_ERROR_MESSAGE,
-                    }
-                },
-            )
-    else:
-        try:
-            session.commit()
-            return
-        except IntegrityError as e:
-            logger.error(e._message())
-            session.rollback()
-            raise HTTPException(
-                status_code=409,
-                detail={
-                    "error": {
-                        "error_type": constant_messages.DELETION_ERROR,
-                        "error_message": constant_messages.deletion_error("device"),
-                    }
-                },
-            )
+def try_session_commit(session):
+    try:
+        session.commit()
+        return
+    except IntegrityError as e:
+        logger.error(print(e._message()))
+        session.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "error": {
+                    "error_type": constant_messages.INTEGRITY_ERROR,
+                    "error_message": constant_messages.INTEGRITY_ERROR_MESSAGE,
+                }
+            },
+        )
+    

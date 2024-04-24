@@ -138,6 +138,8 @@ async def get_all_device(
     brand: str | None = None,
     category: str | None = None
 ):
+    if page_number < 1:
+        page_number = 1
     await log_request(request)
     if category:
         result = Device.from_category(category)
@@ -339,19 +341,41 @@ def device_owner_history(mac_address: str):
 )
 async def get_all_users(
     request: Request,
-    skip: int | None = 0,
-    limit: int | None = 20,
+    page_number: int | None = 1,
+    page_size: int | None = 20,
     id: int | None = None,
 ):
+    if page_number < 1:
+        page_number = 1
     await log_request(request)
     if id:
         user_info = User.from_id(id)
         check_for_null_or_deleted(user_info, "id", "user")
         return normal_response(data=user_info)
-    result, count = User.get_all(skip=skip, limit=limit)
+    result, count = User.get_all(page_number=page_number, page_size=page_size)
+    final_page = ceil(count / page_size)
+    next_page, previous_page = None, None
+    if page_size * page_number < count:
+        next_page = f"/api/v1/user?page_number={page_number+1}&page_size={page_size}"
+    if page_number > 1:
+        if page_number > final_page:
+            previous_page = (
+                f"/api/v1/user?page_number={final_page}&page_size={page_size}"
+            )
+        else:
+            previous_page = (
+                f"/api/v1/user?page_number={page_number-1}&page_size={page_size}"
+            )
     return normal_response(
         data={
-            "pagination": {"total": count, "skip": skip, "limit": limit},
+            "pagination": {
+                "total": count,
+                "page_number": page_number,
+                "page_Size": page_size,
+                "next_page": next_page,
+                "previous_page": previous_page,
+                "final_page": final_page,
+            },
             "result": result,
         }
     )
