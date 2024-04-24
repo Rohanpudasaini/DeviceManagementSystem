@@ -15,7 +15,6 @@ from core.logger import logger
 from core.db import Base
 
 
-
 class User(Base):
     __tablename__ = "user"
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
@@ -49,98 +48,70 @@ class User(Base):
 
     @classmethod
     def add(cls, **kwargs):
-        # username, email, password, message
         password = generate_password(12)
         kwargs["password"] = auth.hash_password(password)
         role_to_add = kwargs.get("role")
         kwargs.pop("role")
-        user_to_add = cls(**kwargs)
-        if role_to_add:
-            role = Role.from_name(role_to_add)
-            if role:
-                user_to_add.role_id = [role]
-            else:
-                role = Role.from_name("viewer")
-                user_to_add.role_id = [role]
-
-        session.add(user_to_add)
-        handle_db_transaction(session)
-        logger.info(msg=f"User with username {user_to_add.full_name} Added Successfully")
-        return (
-            password,
-            user_to_add.full_name,
-            response_model(
-                message="User added successfully, Please find your temporary password in mail"
+        user_exist = session.scalar(Select(cls).where(cls.email == kwargs["email"]))
+        if not user_exist:
+            user_to_add = cls(**kwargs)
+            if role_to_add:
+                role = Role.from_name(role_to_add)
+                if role:
+                    user_to_add.role_id = [role]
+                else:
+                    role = Role.from_name("viewer")
+                    user_to_add.role_id = [role]
+            session.add(user_to_add)
+            handle_db_transaction(session)
+            logger.info(
+                msg=f"User with username {user_to_add.full_name} Added Successfully"
+            )
+            return (
+                password,
+                user_to_add.full_name,
+                response_model(
+                    message="User added successfully, Please find your temporary password in mail"
+                ),
+            )
+        raise HTTPException(
+            status_code=409,
+            detail=response_model(
+                message=constants.INTEGRITY_ERROR,
+                error=constants.INTEGRITY_ERROR_MESSAGE,
             ),
         )
 
     @classmethod
     def change_password(cls, email, **kwargs):
         user_to_update = cls.from_email(email)
-        if user_to_update:
-            if user_to_update.default_password:
-                if kwargs["new_password"] == user_to_update.password:
-                    logger.warning("Same password as old password")
-                    raise HTTPException(
-                        status_code=409,
-                        detail=response_model(
-                            message="Same Password",
-                            error="New password same as old password",
-                        ),
-                    )
-                if kwargs["old_password"] == user_to_update.password:
-                    user_to_update.password = auth.hash_password(kwargs["new_password"])
-                    user_to_update.default_password = False
-                    session.add(user_to_update)
-                    handle_db_transaction(session)
-                    logger.info("Password Changed Successfully")
-                    return "Password Changed Successfully, Enjoy your account"
-
+        if auth.verify_password(kwargs["old_password"], user_to_update.password):
+            if auth.verify_password(kwargs["new_password"], user_to_update.password):
+                logger.warning("Same password as old password")
                 raise HTTPException(
-                    status_code=401,
+                    status_code=409,
                     detail=response_model(
-                        message=constants.UNAUTHORIZED,
-                        error=constants.UNAUTHORIZED_MESSAGE,
+                        message="Same Password",
+                        error="New password same as old password",
                     ),
                 )
+            user_to_update.password = auth.hash_password(kwargs["new_password"])
+            user_to_update.default_password = False
+            handle_db_transaction(session)
+            logger.info("Password Changed Successfully")
+            return "Password Changed Successfully, Enjoy your account"
 
-            if auth.verify_password(kwargs["old_password"], user_to_update.password):
-                if auth.verify_password(
-                    kwargs["new_password"], user_to_update.password
-                ):
-                    logger.warning("Same password as old password")
-                    raise HTTPException(
-                        status_code=409,
-                        detail=response_model(
-                            message="Same Password",
-                            error="New password same as old password",
-                        ),
-                    )
-                user_to_update.password = auth.hash_password(kwargs["new_password"])
-                user_to_update.default_password = False
-                handle_db_transaction(session)
-                logger.info("Password Changed Successfully")
-                return "Password Changed Successfully, Enjoy your account"
-
-            logger.warning("Password don't match")
-            raise HTTPException(
-                status_code=409,
-                detail=response_model(
-                    message=constants.UNAUTHORIZED,
-                    error=constants.UNAUTHORIZED_MESSAGE,
-                ),
-            )
+        logger.warning("Password don't match")
+        raise HTTPException(
+            status_code=409,
+            detail=response_model(
+                message=constants.UNAUTHORIZED,
+                error=constants.UNAUTHORIZED_MESSAGE,
+            ),
+        )
 
     @classmethod
     def reset_password(cls, email, new_password, confirm_password):
-        if new_password != confirm_password:
-            raise HTTPException(
-                status_code=409,
-                detail=response_model(
-                    message="Different Password",
-                    error="New password and confirm password must be same",
-                ),
-            )
         user_object = cls.from_email(email)
         password = auth.hash_password(new_password)
         user_object.password = password
@@ -152,8 +123,7 @@ class User(Base):
         return response_model(message="Password changed successfully!")
 
     @classmethod
-    def update(cls, email, **kwargs):
-        user_to_update = cls.from_email(email)
+    def update(cls, user_to_update, **kwargs):
         role_to_add = kwargs["role"]
         if role_to_add:
             final_role = Role.from_name(role_to_add)
@@ -161,7 +131,6 @@ class User(Base):
                 user_to_update.role_id = [final_role]
         for key, value in kwargs.items():
             if value is not None:
-                # print(value)
                 setattr(user_to_update, key, value)
         session.add(user_to_update)
         handle_db_transaction(session)
@@ -169,29 +138,8 @@ class User(Base):
         return "Update Successful"
 
     @classmethod
-    def current_device(cls, token: dict):
-
-        email = token["user_identifier"]
-        if not email:
-            # return response_model(message ="Authentication failed .please check your token !")
-            raise HTTPException(
-                status_code=401,
-                detail=response_model(
-                    message=constants.TOKEN_ERROR,
-                    error=constants.TOKEN_VERIFICATION_FAILED,
-                ),
-            )
-        user = session.scalar(Select(cls).where(cls.email == email))
-
-        if not user:
-            raise HTTPException(
-                status_code=404,
-                detail=response_model(
-                    message=constants.REQUEST_NOT_FOUND,
-                    error=constants.request_not_found("user", "email"),
-                ),
-            )
-
+    def current_device(cls, email: dict):
+        user = cls.from_email(email)
         devices = user.devices
         if not devices:
             raise HTTPException(
@@ -201,21 +149,11 @@ class User(Base):
                     error=f"No device is associated with the {user.full_name}",
                 ),
             )
-
         return devices
 
     @classmethod
     def current_devices_by_user_id(cls, user_id):
-        user = session.scalar(Select(cls).filter(cls.id == user_id))
-        if not user:
-            raise HTTPException(
-                status_code=404,
-                detail=response_model(
-                    message=constants.REQUEST_NOT_FOUND,
-                    error=constants.request_not_found("user", "id"),
-                ),
-            )
-
+        user = cls.from_id(user_id)
         devices = user.devices
         if not devices:
             raise HTTPException(
@@ -245,7 +183,6 @@ class User(Base):
         logger.info(msg=f"{user_to_delete.full_name} deleted Successfully")
         return "Deleted Successfully"
 
-    
     @classmethod
     def get_all(cls, page_number, page_size):
         statement = (
@@ -255,35 +192,35 @@ class User(Base):
             .limit(page_size)
         )
         count = session.scalar(
-            Select(func.count()).select_from(cls).where(cls.deleted == False) # noqa: E712
+            Select(func.count()).select_from(cls).where(cls.deleted == False)  # noqa: E712
         )
         return session.scalars(statement).all(), count
 
     @classmethod
     def from_id(cls, id):
-        result = session.scalar(Select(cls).where(cls.id == id, cls.deleted == False)) # noqa: E712
+        result = session.scalar(Select(cls).where(cls.id == id, cls.deleted == False))  # noqa: E712
         if not result:
             raise HTTPException(
-                status_code= 404,
-                detail= response_model(
-                    message= constants.REQUEST_NOT_FOUND,
-                    error = constants.request_not_found("user", "id")
-                )
+                status_code=404,
+                detail=response_model(
+                    message=constants.REQUEST_NOT_FOUND,
+                    error=constants.request_not_found("user", "id"),
+                ),
             )
         return result
 
     @classmethod
     def from_email(cls, email):
         result = session.scalar(
-            Select(cls).where(cls.email == email, cls.deleted == False) # noqa: E712
+            Select(cls).where(cls.email == email, cls.deleted == False)  # noqa: E712
         )
         if not result:
             raise HTTPException(
-                status_code= 404,
-                detail= response_model(
-                    message= constants.REQUEST_NOT_FOUND,
-                    error = constants.request_not_found("user", "email")
-                )
+                status_code=404,
+                detail=response_model(
+                    message=constants.REQUEST_NOT_FOUND,
+                    error=constants.request_not_found("user", "email"),
+                ),
             )
         return result
 
@@ -294,7 +231,6 @@ class User(Base):
         if is_valid:
             access_token, refresh_token = auth.generate_JWT(email=user_object.email)
             if not user_object.default_password:
-                # print(user_object.role_id)
                 role_id = session.scalars(
                     Select(UserRole.role_id).where(UserRole.user_id == user_object.id)
                 ).first()
@@ -314,7 +250,7 @@ class User(Base):
                 )
             logger.warning("Default password, redirection to change password")
             return response_model(
-                message="Default password used to login, please change password, use the below provided token to reset password at /reset_password",
+                message="Default password used to login, please change password, use the below provided token to reset password at /password/reset",
                 data={"token": auth.generate_otp_JWT(kwargs["email"])},
             )
         logger.error("Invalid Credentials, checking temp password")
@@ -329,6 +265,12 @@ class User(Base):
                         message="Temporary password is used, please use this access token to change password at /reset_password.",
                         data={"token": access_token},
                     )
+                raise HTTPException(
+                    status_code=401,
+                    detail=response_model(
+                        message="Unauthorized", error="The temp password is already expired, please request for another one. !"
+                    ),
+        )
         raise HTTPException(
             status_code=401,
             detail=response_model(
@@ -340,6 +282,7 @@ class User(Base):
     def get_all_role(cls, email):
         user_object = cls.from_email(email)
         return user_object.role_id.all()
+
 
 class Role(Base):
     __tablename__ = "role"
@@ -360,11 +303,11 @@ class Role(Base):
         result = session.scalar(Select(cls).where(cls.name == name))
         if not result:
             raise HTTPException(
-                status_code= 404,
-                detail= response_model(
-                    message= constants.REQUEST_NOT_FOUND,
-                    error = constants.request_not_found("role", "name")
-                )
+                status_code=404,
+                detail=response_model(
+                    message=constants.REQUEST_NOT_FOUND,
+                    error=constants.request_not_found("role", "name"),
+                ),
             )
         return result
 
@@ -373,11 +316,11 @@ class Role(Base):
         result = session.scalar(Select(cls.name).where(cls.id == id))
         if not result:
             raise HTTPException(
-                status_code= 404,
-                detail= response_model(
-                    message= constants.REQUEST_NOT_FOUND,
-                    error = constants.request_not_found("role", "id")
-                )
+                status_code=404,
+                detail=response_model(
+                    message=constants.REQUEST_NOT_FOUND,
+                    error=constants.request_not_found("role", "id"),
+                ),
             )
         return result
 
@@ -413,11 +356,11 @@ class Permission(Base):
         result = session.scalar(Select(cls).where(cls.scope == scope))
         if not result:
             raise HTTPException(
-                status_code= 404,
-                detail= response_model(
-                    message= constants.REQUEST_NOT_FOUND,
-                    error = constants.request_not_found("permission", "scope")
-                )
+                status_code=404,
+                detail=response_model(
+                    message=constants.REQUEST_NOT_FOUND,
+                    error=constants.request_not_found("permission", "scope"),
+                ),
             )
         return result
 

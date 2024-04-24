@@ -1,5 +1,5 @@
 from sqlalchemy import create_engine, URL
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException
 from core import constants
@@ -24,13 +24,20 @@ url = URL.create(
 
 engine = create_engine(url, echo=False)
 session = Session(bind=engine)
+session_local = sessionmaker(autocommit=False,bind=engine, autoflush=False,)
 
 
+def get_session():
+    session_instance = session_local()
+    try:
+        yield session_instance
+    finally:
+        session_instance.close()
 class Base(DeclarativeBase):
     pass
 
 # Base.metadata.create_all(engine)
-def handle_db_transaction(session):
+def handle_db_transaction(session = get_session()):
     try:
         session.commit()
         return

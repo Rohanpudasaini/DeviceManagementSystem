@@ -37,12 +37,16 @@ async def get_all_users(
     page_number: int | None = 1,
     page_size: int | None = 20,
     id: int | None = None,
+    email: str | None = None
 ):
     if page_number < 1:
         page_number = 1
     await log_request(request)
     if id:
         user_info = User.from_id(id)
+        return response_model(data=user_info)
+    if email:
+        user_info = User.from_email(email)
         return response_model(data=user_info)
     result, count = User.get_all(page_number=page_number, page_size=page_size)
     final_page = ceil(count / page_size)
@@ -102,7 +106,8 @@ async def update_user(
     userUpdateModel: UserUpdateModel, request: Request, email: EmailStr
 ):
     await log_request(request)
-    return response_model(message=User.update(email, **userUpdateModel.model_dump()))
+    user_to_update = User.from_email(email)
+    return response_model(message=User.update(user_to_update, **userUpdateModel.model_dump()))
 
 
 @router.delete(
@@ -118,12 +123,10 @@ async def my_info(token=Depends(auth.validate_token)):
     return response_model(data=User.from_email(token["user_identifier"]))
 
 
-@router.get("/user/record/", tags=["User"])
-async def user_records(email):
+@router.get("/user/record", tags=["User"])
+async def my_records(email):
     user_object = User.from_email(email)
-
     user_id = user_object.id
-
     return response_model(
         message="Successful", data=DeviceRequestRecord.user_record(user_id)
     )
@@ -142,7 +145,8 @@ def update_password(
 
 @router.get("/user/current-device", tags=["User"])
 async def current_device(token: str = Depends(auth.validate_token)):
-    current_device = User.current_device(token)
+    email = token["user_identifier"]
+    current_device = User.current_device(email)
     return response_model(data=current_device)
 
 
@@ -158,11 +162,18 @@ async def current_devices_user_id(id: int):
 
 @router.post("/password/reset", tags=["Authentication"])
 def reset_password(token=Form(), new_password=Form(), confirm_password=Form()):
-    email = auth.decode_otp_jwt(token)
-    email = email["user_identifier"]
+    decoded_token = auth.decode_otp_jwt(token)
+    email = decoded_token["user_identifier"]
+    if new_password != confirm_password:
+            raise HTTPException(
+                status_code=409,
+                detail=response_model(
+                    message="Different Password",
+                    error="New password and confirm password must be same",
+                ),
+            )
     result = User.reset_password(email, new_password, confirm_password)
-    if result:
-        return response_model(message="Your password has been successfully updated.")
+    return response_model(message=result)
 
 
 @router.post("/user/login", tags=["User"])
@@ -191,14 +202,6 @@ async def forget_password(
     resetPassword: ResetPasswordModel, backgroundTasks: BackgroundTasks
 ):
     user_object = User.from_email(resetPassword.email)
-    if not user_object:
-        raise HTTPException(
-            status_code=404,
-            detail=response_model(
-                message=constants.REQUEST_NOT_FOUND,
-                error=constants.request_not_found("user", "email"),
-            ),
-        )
     password = generate_password(12)
     backgroundTasks.add_task(
         send_mail.reset_mail,
@@ -206,7 +209,6 @@ async def forget_password(
         username=user_object.full_name,
         password=password,
     )
-    # user_object.
     user_object.temp_password = auth.hash_password(password)
     user_object.temp_password_created_at = datetime.datetime.now(datetime.UTC)
     handle_db_transaction(session)
