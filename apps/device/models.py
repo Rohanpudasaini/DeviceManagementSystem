@@ -6,7 +6,7 @@ from apps.user.models import User
 from core.utils import response_model
 from apps.device.schemas import DeviceStatus, DeviceType, Purpose
 import datetime
-from core.db import session, handle_db_transaction
+from core.db import handle_db_transaction, get_session
 from core import constants
 from core.logger import logger
 from core.db import Base
@@ -29,6 +29,7 @@ class MaintenanceHistory(Base):
 
     @classmethod
     def add(cls, mac_address, email, **kwargs):
+        session = get_session()
         user_email = email
         device_to_repair_mac_address = mac_address
         logger.info(
@@ -62,6 +63,7 @@ class MaintenanceHistory(Base):
 
     @classmethod
     def update(cls, mac_address, **kwargs):
+        session = get_session()
         mac_address = mac_address
         returned_device = Device.from_mac_address(mac_address)
         device_id = returned_device.id
@@ -92,6 +94,7 @@ class MaintenanceHistory(Base):
     
     @classmethod
     def device_maintenance_history(cls, device_id):
+        session = get_session()
         return session.scalars(Select(cls).where(cls.device_id == device_id)).all()
 
 
@@ -116,10 +119,12 @@ class DeviceRequestRecord(Base):
 
     @classmethod
     def user_record(cls, id):
+        session = get_session()
         return session.scalars(Select(cls).where(cls.user_id == id)).all()
 
     @classmethod
     def allot_to_user(cls, user_email, mac_address):
+        session = get_session()
         device_to_allot = Device.from_mac_address(mac_address)
         device_id = device_to_allot.id
         logger.info(
@@ -175,6 +180,7 @@ class DeviceRequestRecord(Base):
 
     @classmethod
     def return_device(cls, user_email, mac_address):
+        session = get_session()
         device_to_return = Device.from_mac_address(mac_address)
         device_id = device_to_return.id
         logger.info(
@@ -213,6 +219,7 @@ class DeviceRequestRecord(Base):
 
     @classmethod
     def device_owner_history(cls, device_id):
+        session = get_session()
         return session.scalars(Select(cls).where(cls.device_id == device_id)).all()
 
 class Device(Base):
@@ -241,6 +248,7 @@ class Device(Base):
 
     @classmethod
     def add(cls, **kwargs):
+        session = get_session()
         device_to_add = cls(**kwargs)
         device_exists = session.scalar(Select(cls).where(cls.mac_address==kwargs['mac_address']))
         if not device_exists:
@@ -258,6 +266,7 @@ class Device(Base):
 
     @classmethod
     def update(cls, mac_address, **kwargs):
+        session = get_session()
         device_to_update = cls.from_mac_address(mac_address)
         for key, value in kwargs.items():
             if value:
@@ -271,6 +280,7 @@ class Device(Base):
 
     @classmethod
     def delete(cls, mac_address):
+        session = get_session()
         device_to_delete = cls.from_mac_address(mac_address)
         device_to_delete.available = False
         device_to_delete.deleted = True
@@ -284,6 +294,7 @@ class Device(Base):
 
     @classmethod
     def from_id(cls, id):
+        session = get_session()
         result= session.scalar(Select(cls).where(cls.id == id, cls.deleted == False))# noqa: E712
         if not result:
             raise HTTPException(
@@ -297,6 +308,7 @@ class Device(Base):
 
     @classmethod
     def from_category(cls,category_name):
+        session = get_session()
         result =  session.scalars(Select(cls).where(cls.deleted == False, cls.type==category_name.upper())).all()# noqa: E712
         if not result:
             raise HTTPException(
@@ -312,6 +324,7 @@ class Device(Base):
 
     @classmethod
     def from_mac_address(cls, mac_address):
+        session = get_session()
         result = session.scalar(
             Select(cls).where(cls.mac_address == mac_address, cls.deleted == False)# noqa: E712
         )
@@ -327,6 +340,7 @@ class Device(Base):
 
     @classmethod
     def get_all(cls, page_number, page_size):
+        session = get_session()
         statement = (
             Select(cls)
             .where(cls.available == True, cls.deleted == False)   # noqa: E712
@@ -343,6 +357,7 @@ class Device(Base):
 
     @classmethod
     def search_device(cls, name, brand):
+        session = get_session()
         if name and brand:
             devices = session.scalars(
                 Select(cls).filter(

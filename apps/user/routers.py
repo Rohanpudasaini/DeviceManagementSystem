@@ -2,7 +2,7 @@ import datetime
 from math import ceil
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, BackgroundTasks
 from pydantic import EmailStr
-from core.db import handle_db_transaction, session
+from core.db import get_session, handle_db_transaction
 from apps.device.models import DeviceRequestRecord, User
 from auth import auth
 from auth.permissions import PermissionChecker
@@ -171,7 +171,7 @@ def reset_password(token=Form(), new_password=Form(), confirm_password=Form()):
                     error="New password and confirm password must be same",
                 ),
             )
-    result = User.reset_password(email, new_password, confirm_password)
+    result = User.reset_password(email, new_password)
     return response_model(message=result)
 
 
@@ -200,6 +200,7 @@ async def get_new_accessToken(refreshToken: RefreshTokenModel):
 async def forget_password(
     resetPassword: ResetPasswordModel, backgroundTasks: BackgroundTasks
 ):
+    session = get_session()
     user_object = User.from_email(resetPassword.email)
     password = generate_password(12)
     backgroundTasks.add_task(
