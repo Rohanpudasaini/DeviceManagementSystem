@@ -9,7 +9,8 @@ from auth.permission_checker import PermissionChecker
 from utils import constant_messages
 from utils.logger import logger
 from utils import send_mail
-import os
+
+# import oss
 from utils.helper_function import (
     check_for_null_or_deleted,
     error_response,
@@ -108,7 +109,6 @@ async def forget_password(
         username=user_object.full_name,
         password=password,
     )
-    # user_object.
     user_object.temp_password = auth.hash_password(password)
     user_object.temp_password_created_at = datetime.datetime.now(datetime.UTC)
     try_session_commit(session)
