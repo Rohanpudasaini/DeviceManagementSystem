@@ -2,9 +2,10 @@ from sqlalchemy import create_engine, URL
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException
-from utils import constant_messages
-from utils.logger import logger
+from core import constants
+from core.logger import logger
 import os
+from sqlalchemy.orm import DeclarativeBase
 
 host = os.getenv("HOST")
 database = os.getenv("DATABASE")
@@ -23,8 +24,11 @@ engine = create_engine(url, echo=False)
 session = Session(bind=engine)
 
 
+class Base(DeclarativeBase):
+    pass
+
 # Base.metadata.create_all(engine)
-def try_session_commit(session):
+def handle_db_transaction(session):
     try:
         session.commit()
         return
@@ -35,8 +39,8 @@ def try_session_commit(session):
             status_code=409,
             detail={
                 "error": {
-                    "error_type": constant_messages.INTEGRITY_ERROR,
-                    "error_message": constant_messages.INTEGRITY_ERROR_MESSAGE,
+                    "error_type": constants.INTEGRITY_ERROR,
+                    "error_message": constants.INTEGRITY_ERROR_MESSAGE,
                 }
             },
         )

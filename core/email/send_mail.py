@@ -1,7 +1,7 @@
 import os
 import smtplib
 from email.message import EmailMessage
-from utils.main_message import (
+from core.email.templates import (
     get_reset_link_html,
     get_reset_link_text,
     get_temp_password_html,

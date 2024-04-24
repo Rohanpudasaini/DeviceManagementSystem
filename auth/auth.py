@@ -6,8 +6,8 @@ import os
 import bcrypt
 from fastapi import Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from utils.helper_function import error_response
-from utils import constant_messages
+from core.utils import error_response
+from core import constants
 
 contain_header = HTTPBearer(auto_error=False)
 
@@ -41,16 +41,16 @@ def decodeAccessJWT(token: str):
             raise HTTPException(
                 status_code=401,
                 detail=error_response(
-                    message=constant_messages.TOKEN_ERROR,
-                    error=constant_messages.INVALID_TOKEN_SCHEME,
+                    message=constants.TOKEN_ERROR,
+                    error=constants.INVALID_TOKEN_SCHEME,
                 ),
             )
     except JWTError:
         raise HTTPException(
             status_code=401,
             detail=error_response(
-                message=constant_messages.TOKEN_ERROR,
-                error=constant_messages.TOKEN_VERIFICATION_FAILED,
+                message=constants.TOKEN_ERROR,
+                error=constants.TOKEN_VERIFICATION_FAILED,
             ),
         )
 
@@ -66,8 +66,8 @@ def decodeRefreshJWT(token: str):
             raise HTTPException(
                 status_code=401,
                 detail=error_response(
-                    message=constant_messages.TOKEN_ERROR,
-                    error=constant_messages.EXPIRED_TOKEN,
+                    message=constants.TOKEN_ERROR,
+                    error=constants.EXPIRED_TOKEN,
                 ),
             )
     except JWTError:
@@ -75,8 +75,8 @@ def decodeRefreshJWT(token: str):
             status_code=401,
             # detail=
             detail=error_response(
-                message=constant_messages.TOKEN_ERROR,
-                error=constant_messages.TOKEN_VERIFICATION_FAILED,
+                message=constants.TOKEN_ERROR,
+                error=constants.TOKEN_VERIFICATION_FAILED,
             ),
         )
 
@@ -100,8 +100,8 @@ def decode_otp_jwt(token: str):
             raise HTTPException(
                 status_code=401,
                 detail=error_response(
-                    message=constant_messages.TOKEN_ERROR,
-                    error=constant_messages.EXPIRED_TOKEN,
+                    message=constants.TOKEN_ERROR,
+                    error=constants.EXPIRED_TOKEN,
                 ),
             )
     except JWTError:
@@ -109,8 +109,8 @@ def decode_otp_jwt(token: str):
             status_code=401,
             # detail=
             detail=error_response(
-                message=constant_messages.TOKEN_ERROR,
-                error=constant_messages.TOKEN_VERIFICATION_FAILED,
+                message=constants.TOKEN_ERROR,
+                error=constants.TOKEN_VERIFICATION_FAILED,
             ),
         )
 
@@ -136,7 +136,7 @@ def validate_token(
     raise HTTPException(
         status_code=401,
         detail=error_response(
-            message=constant_messages.TOKEN_ERROR,
-            error=constant_messages.TOKEN_VERIFICATION_FAILED,
+            message=constants.TOKEN_ERROR,
+            error=constants.TOKEN_VERIFICATION_FAILED,
         ),
     )

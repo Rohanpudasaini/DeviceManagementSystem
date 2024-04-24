@@ -1,7 +1,7 @@
 import json
 import string
 from fastapi import HTTPException
-from . import constant_messages
+from ..core import constants
 from .logger import logger
 from fastapi import Response
 import secrets
@@ -13,8 +13,8 @@ def check_for_null_or_deleted(object, email='identifier', name='Object'):
             raise HTTPException(
                 status_code=404,
                 detail=error_response(
-                    message=constant_messages.DELETED_ERROR,
-                    error=constant_messages.DELETED_ERROR_MESSAGE +
+                    message=constants.DELETED_ERROR,
+                    error=constants.DELETED_ERROR_MESSAGE +
                     f' The {object.__class__} was deleted at {object.deleted_at}'
                 )
             )
@@ -22,8 +22,8 @@ def check_for_null_or_deleted(object, email='identifier', name='Object'):
         raise HTTPException(
             status_code=404,
             detail=error_response(
-                message= constant_messages.REQUEST_NOT_FOUND,
-                error=constant_messages.request_not_found(name, email)
+                message= constants.REQUEST_NOT_FOUND,
+                error=constants.request_not_found(name, email)
             
             )
         )
