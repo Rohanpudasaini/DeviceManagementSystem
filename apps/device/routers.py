@@ -1,16 +1,13 @@
-
 from math import ceil
-from fastapi import Depends, Request
+from fastapi import Depends, Request, APIRouter
 from apps.device.models import Device, DeviceRequestRecord, MaintenanceHistory
 from auth import auth
 from auth.permissions import PermissionChecker
 from core import constants
 from core.logger import logger
 from core.utils import (
-    check_for_null_or_deleted,
-    error_response,
+    response_model,
     log_request,
-    normal_response,
 )
 from apps.device.schemas import (
     DeviceAddModel,
@@ -22,22 +19,20 @@ from apps.device.schemas import (
 )
 from core.pydantic import DeleteModel
 
-from main import api_v1
+router = APIRouter(prefix='/device')
 
 
-@api_v1.get(
-    "/device/categories",
+@router.get(
+    "/categories",
     tags=["Device"],
-    dependencies=[Depends(PermissionChecker("view_device"))]
+    dependencies=[Depends(PermissionChecker("view_device"))],
 )
 async def categories():
-    return normal_response(data=[i for i in DeviceType])
+    return response_model(data=[i for i in DeviceType])
 
 
-@api_v1.get(
-    "/device",
-    tags=["Device"],
-    dependencies=[Depends(PermissionChecker("view_device"))]
+@router.get(
+    "", tags=["Device"], dependencies=[Depends(PermissionChecker("view_device"))]
 )
 async def get_all_device(
     request: Request,
@@ -46,7 +41,7 @@ async def get_all_device(
     mac_address: str | None = None,
     name: str | None = None,
     brand: str | None = None,
-    category: str | None = None
+    category: str | None = None,
 ):
     if page_number < 1:
         page_number = 1
@@ -54,30 +49,28 @@ async def get_all_device(
     if category:
         result = Device.from_category(category)
         count = len(result)
-        return normal_response(data={"pagination": {"total": count}, "result": result})
+        return response_model(data={"pagination": {"total": count}, "result": result})
     if mac_address:
         device_info = Device.from_mac_address(mac_address)
-        check_for_null_or_deleted(device_info, "mac_address", "device")
-        return normal_response(data=device_info)
+        return response_model(data=device_info)
     if name or brand:
         device = Device.search_device(name, brand)
         if device:
             count = len(device)
             logger.info({"pagination": {"total": count}, "result": device})
-            return normal_response(
+            return response_model(
                 data={"pagination": {"total": count}, "result": device}
             )
         else:
-            return error_response(
+            return response_model(
                 message=constants.REQUEST_NOT_FOUND,
-                error=constants.request_not_found(
-                    "Device", "Brand or Name"),
+                error=constants.request_not_found("Device", "Brand or Name"),
             )
 
-    result, count = Device.get_all(
-        page_number=page_number, page_size=page_size)
+    result, count = Device.get_all(page_number=page_number, page_size=page_size)
     final_page = ceil(count / page_size)
-    logger.info([singleresult.__dict__ for singleresult in result])
+    if result:
+        logger.info([singleresult.__dict__ for singleresult in result])
     next_page, previous_page = None, None
     if page_size * page_number < count:
         next_page = f"/api/v1/device?page_number={page_number+1}&page_size={page_size}"
@@ -91,7 +84,7 @@ async def get_all_device(
                 f"/api/v1/device?page_number={page_number-1}&page_size={page_size}"
             )
 
-    return normal_response(
+    return response_model(
         data={
             "pagination": {
                 "total": count,
@@ -106,19 +99,19 @@ async def get_all_device(
     )
 
 
-@api_v1.post(
-    "/device",
+@router.post(
+    "",
     tags=["Device"],
     status_code=201,
     dependencies=[Depends(PermissionChecker("create_device"))],
 )
 async def add_device(deviceAddModel: DeviceAddModel, request: Request):
     await log_request(request)
-    return normal_response(message=Device.add(**deviceAddModel.model_dump()))
+    return response_model(message=Device.add(**deviceAddModel.model_dump()))
 
 
-@api_v1.patch(
-    "/device/{mac_address}",
+@router.patch(
+    "/{mac_address}",
     tags=["Device"],
     dependencies=[Depends(PermissionChecker("update_device"))],
 )
@@ -126,23 +119,23 @@ async def update_device(
     deviceUpdateModel: DeviceUpdateModel, request: Request, mac_address: str
 ):
     await log_request(request)
-    return normal_response(
+    return response_model(
         message=Device.update(mac_address, **deviceUpdateModel.model_dump())
     )
 
 
-@api_v1.delete(
-    "/device",
+@router.delete(
+    "",
     tags=["Device"],
     dependencies=[Depends(PermissionChecker("delete_device"))],
 )
 async def delete_device(deviceDeleteModel: DeleteModel, request: Request):
     await log_request(request)
-    return normal_response(message=Device.delete(**deviceDeleteModel.model_dump()))
+    return response_model(message=Device.delete(deviceDeleteModel.identifier))
 
 
-@api_v1.post(
-    "/device/request",
+@router.post(
+    "/request",
     tags=["Device"],
     dependencies=[Depends(PermissionChecker("request_device"))],
 )
@@ -153,15 +146,15 @@ async def request_device(
 ):
     await log_request(request)
     email = token.get("user_identifier")
-    return normal_response(
+    return response_model(
         message=DeviceRequestRecord.allot_to_user(
             user_email=email, mac_address=deviceRequestModel.mac_address
         )
     )
 
 
-@api_v1.post(
-    "/device/return",
+@router.post(
+    "/return",
     tags=["Device"],
     dependencies=[Depends(PermissionChecker("request_device"))],
 )
@@ -172,15 +165,15 @@ async def return_device(
 ):
     await log_request(request)
     email = token.get("user_identifier")
-    return normal_response(
+    return response_model(
         message=DeviceRequestRecord.return_device(
             user_email=email, mac_address=deviceReturnModel.mac_address
         )
     )
 
 
-@api_v1.post(
-    "/device/request-maintenance/{mac_address}",
+@router.post(
+    "/request-maintenance/{mac_address}",
     tags=["Device"],
     status_code=201,
     dependencies=[Depends(PermissionChecker("request_device"))],
@@ -190,7 +183,7 @@ async def request_maintenance(
     deviceMaintenanceModel: DeviceMaintenanceModel,
     token=Depends(auth.validate_token),
 ):
-    return normal_response(
+    return response_model(
         message=MaintenanceHistory.add(
             mac_address=mac_address,
             email=token.get("user_identifier"),
@@ -199,47 +192,40 @@ async def request_maintenance(
     )
 
 
-@api_v1.patch(
-    "/device/return-maintenance/{mac_address}",
+@router.patch(
+    "/return-maintenance/{mac_address}",
     tags=["Device"],
     dependencies=[Depends(PermissionChecker("request_device"))],
 )
 async def return_maintenance(
     mac_address: str, deviceReturn: DeviceReturnFromMaintenanceModel
 ):
-    return normal_response(
+    return response_model(
         message=MaintenanceHistory.update(
             mac_address=mac_address, **deviceReturn.model_dump()
         )
     )
 
 
-@api_v1.get(
-    "/device/{mac_address}/maintenance-history",
+@router.get(
+    "/{mac_address}/maintenance-history",
     tags=["Device"],
-    dependencies=[Depends(PermissionChecker("view_device"))]
-    )
+    dependencies=[Depends(PermissionChecker("view_device"))],
+)
 def device_maintenance_history(mac_address: str):
     device_object = Device.from_mac_address(mac_address)
-    check_for_null_or_deleted(device_object)
     device_id = device_object.id
     result = MaintenanceHistory.device_maintenance_history(device_id)
-    return normal_response(
-        message="Successful",
-        data=result)
+    return response_model(message="Successful", data=result)
 
 
-@api_v1.get(
-    "/device/{mac_address}/owner-history",
+@router.get(
+    "/{mac_address}/owner-history",
     tags=["Device"],
-    dependencies=[Depends(PermissionChecker("view_device"))]
-    )
+    dependencies=[Depends(PermissionChecker("view_device"))],
+)
 def device_owner_history(mac_address: str):
     device_object = Device.from_mac_address(mac_address)
-    check_for_null_or_deleted(device_object)
     device_id = device_object.id
     result = DeviceRequestRecord.device_owner_history(device_id)
-    return normal_response(
-        message="Successful",
-        data=result)
-
+    return response_model(message="Successful", data=result)

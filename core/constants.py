@@ -1,12 +1,8 @@
 INTERNAL_ERROR = "Internal Error"
-INTERNAL_ERROR_MESSAGE = "An unexpected error occurred. Please try again later."
 TOKEN_VERIFICATION_FAILED = "Couldn't Verify Token, Invalid or expired token"
 INVALID_TOKEN_SCHEME = "Invalid Token Scheme!"
 NO_TOKEN_IN_HEADER = "No token available!"
 REQUEST_NOT_FOUND = "Request Not Found"
-MAGAZINE_REQUEST_NOT_FOUND_MESSAGE = "The Magazine with that ISSN number not found"
-PUBLISHER_REQUEST_NOT_FOUND_MESSAGE = "No publisher with that id"
-GENRE_REQUEST_NOT_FOUND_MESSAGE = "No genre with that id"
 INVALID_REQUEST = "Invalid Request"
 UNAUTHORIZED = "Authorization Error"
 UNAUTHORIZED_MESSAGE = "Incorrect credentials"
@@ -20,11 +16,12 @@ INTEGRITY_ERROR = "IntegrityError"
 INTEGRITY_ERROR_MESSAGE = "Can't compute your request. Duplicate value"
 DELETION_ERROR = "Can't Delete"
 DELETED_ERROR = "Object Deleted"
-DELETED_ERROR_MESSAGE = (
-    "The Object you have requested for is deleted, please select other."
-)
+DELETED_ERROR_MESSAGE = "The Object you have requested for is deleted, please select other."
 EXPIRED_TOKEN = "Expired token"
 
+
+def internal_error(error_message):
+    return f"An unexpected error occurred. Please reach out to us with this message: {error_message}"
 
 def deletion_error(name: str):
     return f"Can't delete this {name}, it might be already be in use or in repair."

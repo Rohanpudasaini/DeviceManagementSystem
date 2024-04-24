@@ -1,7 +1,6 @@
-
 import datetime
 from math import ceil
-from fastapi import Depends, Form, HTTPException, Request, BackgroundTasks
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, BackgroundTasks
 from pydantic import EmailStr
 from core.db import handle_db_transaction, session
 from apps.device.models import DeviceRequestRecord, User
@@ -10,11 +9,10 @@ from auth.permissions import PermissionChecker
 from core import constants
 from core.email import send_mail
 from core.utils import (
-    check_for_null_or_deleted,
-    error_response,
+    response_model,
     generate_password,
     log_request,
-    normal_response,
+    response_model,
 )
 
 from core.pydantic import DeleteModel
@@ -28,14 +26,11 @@ from apps.user.schemas import (
     UserUpdateModel,
 )
 
-from main import api_v1
+router = APIRouter()
 
 
-
-@api_v1.get(
-    "/user",
-    tags=["User"],
-    dependencies=[Depends(PermissionChecker("view_user"))]
+@router.get(
+    "/user", tags=["User"], dependencies=[Depends(PermissionChecker("view_user"))]
 )
 async def get_all_users(
     request: Request,
@@ -48,8 +43,7 @@ async def get_all_users(
     await log_request(request)
     if id:
         user_info = User.from_id(id)
-        check_for_null_or_deleted(user_info, "id", "user")
-        return normal_response(data=user_info)
+        return response_model(data=user_info)
     result, count = User.get_all(page_number=page_number, page_size=page_size)
     final_page = ceil(count / page_size)
     next_page, previous_page = None, None
@@ -64,7 +58,7 @@ async def get_all_users(
             previous_page = (
                 f"/api/v1/user?page_number={page_number-1}&page_size={page_size}"
             )
-    return normal_response(
+    return response_model(
         data={
             "pagination": {
                 "total": count,
@@ -79,7 +73,7 @@ async def get_all_users(
     )
 
 
-@api_v1.post(
+@router.post(
     "/user",
     status_code=201,
     tags=["User"],
@@ -99,7 +93,7 @@ async def add_user(
     return response
 
 
-@api_v1.patch(
+@router.patch(
     "/user/{email}",
     tags=["User"],
     dependencies=[Depends(PermissionChecker("update_user"))],
@@ -108,52 +102,51 @@ async def update_user(
     userUpdateModel: UserUpdateModel, request: Request, email: EmailStr
 ):
     await log_request(request)
-    return normal_response(message=User.update(email, **userUpdateModel.model_dump()))
+    return response_model(message=User.update(email, **userUpdateModel.model_dump()))
 
 
-@api_v1.delete(
+@router.delete(
     "/user", tags=["User"], dependencies=[Depends(PermissionChecker("delete_user"))]
 )
 async def delete_user(userDeleteModel: DeleteModel, request: Request):
     await log_request(request)
-    return normal_response(message=User.delete(**userDeleteModel.model_dump()))
+    return response_model(message=User.delete(**userDeleteModel.model_dump()))
 
 
-@api_v1.get("/user/me", tags=["User"])
+@router.get("/user/me", tags=["User"])
 async def my_info(token=Depends(auth.validate_token)):
-    return normal_response(data=User.from_email(token["user_identifier"]))
+    return response_model(data=User.from_email(token["user_identifier"]))
 
 
-@api_v1.get("/user/record/", tags=["User"])
+@router.get("/user/record/", tags=["User"])
 async def user_records(email):
     user_object = User.from_email(email)
-    check_for_null_or_deleted(user_object)
 
     user_id = user_object.id
 
-    return normal_response(
+    return response_model(
         message="Successful", data=DeviceRequestRecord.user_record(user_id)
     )
 
 
-@api_v1.post("/user/change-password", tags=["User"])
+@router.post("/user/change-password", tags=["User"])
 def update_password(
     changePasswordModel: ChangePasswordModel, token=Depends(auth.validate_token)
 ):
-    return normal_response(
+    return response_model(
         message=User.change_password(
             email=token.get("user_identifier"), **changePasswordModel.model_dump()
         )
     )
 
 
-@api_v1.get("/user/current-device", tags=["User"])
+@router.get("/user/current-device", tags=["User"])
 async def current_device(token: str = Depends(auth.validate_token)):
     current_device = User.current_device(token)
-    return normal_response(data=current_device)
+    return response_model(data=current_device)
 
 
-@api_v1.get(
+@router.get(
     "/user/{id}/current-device",
     tags=["User"],
     dependencies=[Depends(PermissionChecker("all_access"))],
@@ -163,25 +156,25 @@ async def current_devices_user_id(id: int):
     return current_devices
 
 
-@api_v1.post("/password/reset", tags=["Authentication"])
+@router.post("/password/reset", tags=["Authentication"])
 def reset_password(token=Form(), new_password=Form(), confirm_password=Form()):
     email = auth.decode_otp_jwt(token)
     email = email["user_identifier"]
     result = User.reset_password(email, new_password, confirm_password)
     if result:
-        return normal_response(message="Your password has been successfully updated.")
+        return response_model(message="Your password has been successfully updated.")
 
 
-@api_v1.post("/user/login", tags=["User"])
+@router.post("/user/login", tags=["User"])
 async def login(loginModel: LoginModel):
     return User.login(**loginModel.model_dump())
 
 
-@api_v1.post("/user/refresh-token", tags=["User"], status_code=201)
+@router.post("/user/refresh-token", tags=["User"], status_code=201)
 async def get_new_accessToken(refreshToken: RefreshTokenModel):
     token = auth.decodeRefreshJWT(refreshToken.token)
     if token:
-        return normal_response(data={"access_token": token})
+        return response_model(data={"access_token": token})
     raise HTTPException(
         status_code=401,
         detail={
@@ -193,7 +186,7 @@ async def get_new_accessToken(refreshToken: RefreshTokenModel):
     )
 
 
-@api_v1.post("/password/forget", tags=["Authentication"])
+@router.post("/password/forget", tags=["Authentication"])
 async def forget_password(
     resetPassword: ResetPasswordModel, backgroundTasks: BackgroundTasks
 ):
@@ -201,7 +194,7 @@ async def forget_password(
     if not user_object:
         raise HTTPException(
             status_code=404,
-            detail=error_response(
+            detail=response_model(
                 message=constants.REQUEST_NOT_FOUND,
                 error=constants.request_not_found("user", "email"),
             ),
@@ -217,5 +210,4 @@ async def forget_password(
     user_object.temp_password = auth.hash_password(password)
     user_object.temp_password_created_at = datetime.datetime.now(datetime.UTC)
     handle_db_transaction(session)
-    return normal_response(message="Please check your email for temporary password")
-
+    return response_model(message="Please check your email for temporary password")

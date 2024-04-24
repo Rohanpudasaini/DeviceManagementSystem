@@ -7,6 +7,8 @@ from core.logger import logger
 import os
 from sqlalchemy.orm import DeclarativeBase
 
+from core.utils import response_model
+
 host = os.getenv("HOST")
 database = os.getenv("DATABASE")
 password = os.getenv("PASSWORD")
@@ -37,11 +39,19 @@ def handle_db_transaction(session):
         session.rollback()
         raise HTTPException(
             status_code=409,
-            detail={
-                "error": {
-                    "error_type": constants.INTEGRITY_ERROR,
-                    "error_message": constants.INTEGRITY_ERROR_MESSAGE,
-                }
-            },
+            detail=response_model(
+                    message=constants.INTEGRITY_ERROR,
+                    error =constants.INTEGRITY_ERROR_MESSAGE,
+            )
+        )
+    except Exception as e:
+        logger.error(print(e))
+        session.rollback()
+        raise HTTPException(
+            status_code= 500,
+            detail= response_model(
+                message= constants.INTERNAL_ERROR,
+                error= constants.internal_error(str(e))
+            )
         )
     

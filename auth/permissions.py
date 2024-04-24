@@ -1,8 +1,8 @@
 from fastapi import Depends, HTTPException
 from core import constants
-from core.utils import error_response
+from core.utils import response_model
 from . import auth
-from apps.device.models import Role
+from apps.user.models import Role
 
 
 class PermissionChecker:
@@ -15,7 +15,7 @@ class PermissionChecker:
         if not is_permitted:
             raise HTTPException(
                 status_code=403,
-                detail=error_response(
+                detail=response_model(
                     message = constants.FORBIDDEN,
                     error="Not enough permissions to access this resource"
                     ))
