@@ -12,7 +12,6 @@ from core.utils import (
     response_model,
     generate_password,
     log_request,
-    response_model,
 )
 
 from core.pydantic import DeleteModel
