@@ -28,6 +28,46 @@ from apps.user.schemas import (
 router = APIRouter()
 
 
+@router.post("/password/forget", tags=["Authentication"])
+async def forget_password(
+    resetPassword: ResetPasswordModel, backgroundTasks: BackgroundTasks
+):
+    session = next(get_session())
+    user_object = User.from_email(resetPassword.email)
+    password = generate_password(12)
+    backgroundTasks.add_task(
+        send_mail.reset_mail,
+        email_to_send_to=resetPassword.email,
+        username=user_object.full_name,
+        password=password,
+    )
+    user_object.temp_password = auth.hash_password(password)
+    user_object.temp_password_created_at = datetime.datetime.now(datetime.UTC)
+    handle_db_transaction(session)
+    return response_model(message="Please check your email for temporary password")
+
+
+@router.post("/password/reset", tags=["Authentication"])
+def reset_password(token=Form(), new_password=Form(), confirm_password=Form()):
+    decoded_token = auth.decode_otp_jwt(token)
+    email = decoded_token["user_identifier"]
+    if new_password != confirm_password:
+        raise HTTPException(
+            status_code=409,
+            detail=response_model(
+                message="Different Password",
+                error="New password and confirm password must be same",
+            ),
+        )
+    result = User.reset_password(email, new_password)
+    return response_model(message=result)
+
+
+@router.post("/user/login", tags=["User"])
+async def login(loginModel: LoginModel):
+    return User.login(**loginModel.model_dump())
+
+
 @router.get(
     "/user", tags=["User"], dependencies=[Depends(PermissionChecker("view_user"))]
 )
@@ -36,7 +76,7 @@ async def get_all_users(
     page_number: int | None = 1,
     page_size: int | None = 20,
     id: int | None = None,
-    email: str | None = None
+    email: str | None = None,
 ):
     if page_number < 1:
         page_number = 1
@@ -106,7 +146,9 @@ async def update_user(
 ):
     await log_request(request)
     user_to_update = User.from_email(email)
-    return response_model(message=User.update(user_to_update, **userUpdateModel.model_dump()))
+    return response_model(
+        message=User.update(user_to_update, **userUpdateModel.model_dump())
+    )
 
 
 @router.delete(
@@ -159,27 +201,6 @@ async def current_devices_user_id(id: int):
     return current_devices
 
 
-@router.post("/password/reset", tags=["Authentication"])
-def reset_password(token=Form(), new_password=Form(), confirm_password=Form()):
-    decoded_token = auth.decode_otp_jwt(token)
-    email = decoded_token["user_identifier"]
-    if new_password != confirm_password:
-            raise HTTPException(
-                status_code=409,
-                detail=response_model(
-                    message="Different Password",
-                    error="New password and confirm password must be same",
-                ),
-            )
-    result = User.reset_password(email, new_password)
-    return response_model(message=result)
-
-
-@router.post("/user/login", tags=["User"])
-async def login(loginModel: LoginModel):
-    return User.login(**loginModel.model_dump())
-
-
 @router.post("/user/refresh-token", tags=["User"], status_code=201)
 async def get_new_accessToken(refreshToken: RefreshTokenModel):
     token = auth.decodeRefreshJWT(refreshToken.token)
@@ -194,22 +215,3 @@ async def get_new_accessToken(refreshToken: RefreshTokenModel):
             }
         },
     )
-
-
-@router.post("/password/forget", tags=["Authentication"])
-async def forget_password(
-    resetPassword: ResetPasswordModel, backgroundTasks: BackgroundTasks
-):
-    session = get_session()
-    user_object = User.from_email(resetPassword.email)
-    password = generate_password(12)
-    backgroundTasks.add_task(
-        send_mail.reset_mail,
-        email_to_send_to=resetPassword.email,
-        username=user_object.full_name,
-        password=password,
-    )
-    user_object.temp_password = auth.hash_password(password)
-    user_object.temp_password_created_at = datetime.datetime.now(datetime.UTC)
-    handle_db_transaction(session)
-    return response_model(message="Please check your email for temporary password")

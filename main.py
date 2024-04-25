@@ -24,7 +24,7 @@ api_v1 = APIRouter()
 async def home():
     return "Welcome Home"
 
-api_v1.include_router(device_router)
 api_v1.include_router(user_router)
+api_v1.include_router(device_router)
 app.include_router(api_v1)
 

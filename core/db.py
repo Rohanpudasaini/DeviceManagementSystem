@@ -37,7 +37,7 @@ class Base(DeclarativeBase):
     pass
 
 # Base.metadata.create_all(engine)
-def handle_db_transaction(session = get_session()):
+def handle_db_transaction(session = next(get_session())):
     try:
         session.commit()
         return
