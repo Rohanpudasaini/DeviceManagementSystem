@@ -1,6 +1,8 @@
 from math import ceil
-from fastapi import Depends, Request, APIRouter
+from fastapi import Depends, HTTPException, Request, APIRouter
+from apps.device.enum import DeviceStatus
 from apps.device.models import Device, DeviceRequestRecord, MaintenanceHistory
+from apps.user.models import User
 from auth import auth
 from auth.permissions import PermissionChecker
 from core import constants
@@ -115,7 +117,17 @@ async def add_device(
     session=Depends(get_session),
 ):
     await log_request(request)
-    return response_model(message=Device.add(session, **deviceAddModel.model_dump()))
+    mac_exist = Device.from_mac_address(session, deviceAddModel.mac_address)
+    if not mac_exist:
+        return response_model(
+            message=Device.add(session, **deviceAddModel.model_dump())
+        )
+    raise HTTPException(
+        status_code=409,
+        details=response_model(
+            message="Duplicate Value", error="Mac address already exist"
+        ),
+    )
 
 
 @router.patch(
@@ -130,8 +142,11 @@ async def update_device(
     session=Depends(get_session),
 ):
     await log_request(request)
+    device_to_update = Device.from_mac_address(session, mac_address)
     return response_model(
-        message=Device.update(session, mac_address, **deviceUpdateModel.model_dump())
+        message=Device.update(
+            session, device_to_update, **deviceUpdateModel.model_dump()
+        )
     )
 
 
@@ -146,7 +161,8 @@ async def delete_device(
     session=Depends(get_session),
 ):
     await log_request(request)
-    return response_model(message=Device.delete(session, deviceDeleteModel.identifier))
+    device_to_delete = Device.from_mac_address(session, deviceDeleteModel.identifier)
+    return response_model(message=Device.delete(session, device_to_delete))
 
 
 @router.post(
@@ -162,9 +178,29 @@ async def request_device(
 ):
     await log_request(request)
     email = token.get("user_identifier")
+    device_to_allot = Device.from_mac_address(session, deviceRequestModel.mac_address)
+    requested_user = User.from_email(session, email)
+    if not device_to_allot.available:
+        logger.error("The device is no longer available")
+        raise HTTPException(
+            status_code=409,
+            detail=response_model(
+                message=constants.INSUFFICIENT_RESOURCES,
+                error=constants.insufficient_resources("device"),
+            ),
+        )
+    if device_to_allot.status.value != "active":
+        logger.error("The device with device id {device_id} is not active")
+        raise HTTPException(
+            status_code=404,
+            detail=response_model(
+                message=constants.REQUEST_NOT_FOUND,
+                error=constants.request_not_found("device", "device id"),
+            ),
+        )
     return response_model(
         message=DeviceRequestRecord.allot_to_user(
-            session, user_email=email, mac_address=deviceRequestModel.mac_address
+            session, requested_user=requested_user, device_to_allot=device_to_allot
         )
     )
 
@@ -182,9 +218,11 @@ async def return_device(
 ):
     await log_request(request)
     email = token.get("user_identifier")
+    device_to_return = Device.from_mac_address(session, deviceReturnModel.mac_address)
+    returned_user = User.from_email(session, email)
     return response_model(
         message=DeviceRequestRecord.return_device(
-            session, user_email=email, mac_address=deviceReturnModel.mac_address
+            session, returned_user=returned_user, device_to_return=device_to_return
         )
     )
 
@@ -201,11 +239,25 @@ async def request_maintenance(
     token=Depends(auth.validate_token),
     session=Depends(get_session),
 ):
+    email = token.get("user_identifier")
+    device_to_repair = Device.from_mac_address(session, mac_address)
+    user = User.from_email(session, email)
+    if (
+        not device_to_repair.available
+        or device_to_repair.status == DeviceStatus.INACTIVE
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail=response_model(
+                message="Device In Maintenance",
+                error="The device you have request for is in maintenance",
+            ),
+        )
     return response_model(
         message=MaintenanceHistory.add(
             session,
-            mac_address=mac_address,
-            email=token.get("user_identifier"),
+            device_to_repair=device_to_repair,
+            user=user,
             **deviceMaintenanceModel.model_dump(),
         )
     )
@@ -221,9 +273,10 @@ async def return_maintenance(
     deviceReturn: DeviceReturnFromMaintenanceModel,
     session=Depends(get_session),
 ):
+    returned_device = Device.from_mac_address(session, mac_address)
     return response_model(
         message=MaintenanceHistory.update(
-            session, mac_address=mac_address, **deviceReturn.model_dump()
+            session, returned_device=returned_device, **deviceReturn.model_dump()
         )
     )
 

@@ -28,30 +28,12 @@ class MaintenanceHistory(Base):
     returned_from_repair = mapped_column(DateTime)
 
     @classmethod
-    def add(cls, session, mac_address, email, **kwargs):
-        user_email = email
-        device_to_repair_mac_address = mac_address
+    def add(cls, session, device_to_repair, user, **kwargs):
         logger.info(
-            f"User with email {user_email} have requested to repair device with mac address {device_to_repair_mac_address}."
+            f"User with email {user.email} have requested to repair device with mac address {device_to_repair.mac_address}."
         )
-        device_to_repair = Device.from_mac_address(
-            session, device_to_repair_mac_address
-        )
-        if (
-            not device_to_repair.available
-            or device_to_repair.status == DeviceStatus.INACTIVE
-        ):
-            raise HTTPException(
-                status_code=409,
-                detail=response_model(
-                    message="Device In Maintenance",
-                    error="The device you have request for is in maintenance",
-                ),
-            )
-        user = User.from_email(user_email)
         kwargs["devices"] = device_to_repair
         kwargs["reported_by"] = user
-
         object_to_add = cls(**kwargs)
         session.add(object_to_add)
         handle_db_transaction(session)
@@ -61,14 +43,12 @@ class MaintenanceHistory(Base):
         session.add(device_to_repair)
         handle_db_transaction(session)
         logger.info(
-            f"Successfully given device with mac address {device_to_repair_mac_address} to repair"
+            f"Successfully given device with mac address {device_to_repair.mac_address} to repair"
         )
         return "Successfully Given For Repair"
 
     @classmethod
-    def update(cls, session, mac_address, **kwargs):
-        mac_address = mac_address
-        returned_device = Device.from_mac_address(session, mac_address)
+    def update(cls, session, returned_device, **kwargs):
         device_id = returned_device.id
         record_to_update = session.scalar(
             Select(cls).where(
@@ -121,66 +101,35 @@ class DeviceRequestRecord(Base):
         return False
 
     @classmethod
-    def allot_to_user(cls, session, user_email, mac_address):
-        device_to_allot = Device.from_mac_address(session, mac_address)
+    def allot_to_user(cls, session, requested_user, device_to_allot):
         device_id = device_to_allot.id
         logger.info(
             f"Trying to allot a device with device id {device_id} to user \
-            with email {user_email}"
+            with email {requested_user.email}"
         )
-        requested_user = User.from_email(session, user_email)
-        if not device_to_allot.deleted:
-            if device_to_allot.available:
-                if device_to_allot.status.value != "active":
-                    logger.error("The device with device id {device_id} is not active")
-                    raise HTTPException(
-                        status_code=404,
-                        detail=response_model(
-                            message=constants.REQUEST_NOT_FOUND,
-                            error=constants.request_not_found("device", "device id"),
-                        ),
-                    )
-                device_to_allot.user = requested_user
-                session.add(device_to_allot)
-                handle_db_transaction(session)
-                device_to_allot.available = False
-                add_record = cls(
-                    expected_return_date=datetime.datetime.now(tz=datetime.UTC)
-                    + datetime.timedelta(days=30),
-                    device=device_to_allot,
-                    user=requested_user,
-                )
-                session.add(add_record)
-                handle_db_transaction(session)
-                logger.info(
-                    f"Successfully allot device with id {device_id} to user with email {user_email}"
-                )
-                return "successfully alloted device"
-            logger.error("The device is no longer available")
-            raise HTTPException(
-                status_code=409,
-                detail=response_model(
-                    message=constants.INSUFFICIENT_RESOURCES,
-                    error=constants.insufficient_resources("device"),
-                ),
-            )
-        logger.error(f"Device with device id {device_id} is already deleted")
-        raise HTTPException(
-            status_code=404,
-            detail=response_model(
-                message=constants.DELETED_ERROR,
-                error=constants.DELETED_ERROR_MESSAGE,
-            ),
+        device_to_allot.user = requested_user
+        session.add(device_to_allot)
+        handle_db_transaction(session)
+        device_to_allot.available = False
+        add_record = cls(
+            expected_return_date=datetime.datetime.now(tz=datetime.UTC)
+            + datetime.timedelta(days=30),
+            device=device_to_allot,
+            user=requested_user,
         )
+        session.add(add_record)
+        handle_db_transaction(session)
+        logger.info(
+            f"Successfully allot device with id {device_id} to user with email {requested_user.email}"
+        )
+        return "successfully alloted device"
 
     @classmethod
-    def return_device(cls, session, user_email, mac_address):
-        device_to_return = Device.from_mac_address(session, mac_address)
+    def return_device(cls, session, returned_user, device_to_return):
         device_id = device_to_return.id
         logger.info(
-            f"Trying to return device with id {device_id} by user with id {user_email}"
+            f"Trying to return device with id {device_id} by user with id {returned_user.email}"
         )
-        returned_user = User.from_email(session, user_email)
         device_to_return.user = None
         device_to_return.available = True
         session.add(device_to_return)
@@ -196,10 +145,10 @@ class DeviceRequestRecord(Base):
             record_to_update.returned_date = datetime.datetime.now(tz=datetime.UTC)
             session.add(record_to_update)
             handle_db_transaction(session)
-            logger.info(f"{user_email} returned device with id {device_id}")
+            logger.info(f"{returned_user.email} returned device with id {device_id}")
             return "Device Returned Successfully"
         logger.error(
-            f"The user {user_email} have already returned the device with id {device_id}"
+            f"The user {returned_user.email} have already returned the device with id {device_id}"
         )
         raise HTTPException(
             status_code=404,
@@ -243,27 +192,13 @@ class Device(Base):
     @classmethod
     def add(cls, session, **kwargs):
         device_to_add = cls(**kwargs)
-        device_exists = session.scalar(
-            Select(cls).where(cls.mac_address == kwargs["mac_address"])
-        )
-        if not device_exists:
-            session.add(device_to_add)
-            handle_db_transaction(session)
-            logger.info(
-                {"success": "Device Added Successfully", "device_details": kwargs}
-            )
-            return "Device Added Successfully"
-        raise HTTPException(
-            status_code=409,
-            detail=response_model(
-                message=constants.INTEGRITY_ERROR,
-                error=constants.INTEGRITY_ERROR_MESSAGE,
-            ),
-        )
+        session.add(device_to_add)
+        handle_db_transaction(session)
+        logger.info({"success": "Device Added Successfully", "device_details": kwargs})
+        return "Device Added Successfully"
 
     @classmethod
-    def update(cls, session, mac_address, **kwargs):
-        device_to_update = cls.from_mac_address(session, mac_address)
+    def update(cls, session, device_to_update, **kwargs):
         for key, value in kwargs.items():
             if value:
                 setattr(device_to_update, key, value)
@@ -275,8 +210,7 @@ class Device(Base):
         return "Update Successful"
 
     @classmethod
-    def delete(cls, session, mac_address):
-        device_to_delete = cls.from_mac_address(session, mac_address)
+    def delete(cls, session, device_to_delete):
         device_to_delete.available = False
         device_to_delete.deleted = True
         device_to_delete.deleted_at = datetime.datetime.now(tz=datetime.UTC)
@@ -303,8 +237,8 @@ class Device(Base):
     @classmethod
     def from_category(cls, session, category_name):
         result = session.scalars(
-            Select(cls).where(cls.deleted == False, cls.type == category_name.upper()) # noqa: E712
-        ).all()  
+            Select(cls).where(cls.deleted == False, cls.type == category_name.upper())  # noqa: E712
+        ).all()
         if not result:
             raise HTTPException(
                 status_code=404,
