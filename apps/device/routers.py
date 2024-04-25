@@ -31,7 +31,7 @@ router = APIRouter(prefix="/device")
     dependencies=[Depends(PermissionChecker("view_device"))],
 )
 async def categories():
-    return response_model(data=[i for i in DeviceType])
+    return response_model(data=list(DeviceType))
 
 
 @router.get(
