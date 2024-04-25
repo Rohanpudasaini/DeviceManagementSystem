@@ -1,4 +1,3 @@
-from contextlib import contextmanager
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
@@ -12,7 +11,6 @@ from core.config import config
 
 engine = create_engine(config.database_url, pool_size=15, echo=False)
 SessionLocal = sessionmaker(autocommit=False, bind=engine, autoflush=False)
-
 
 
 def get_session():

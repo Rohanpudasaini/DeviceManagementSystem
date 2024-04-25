@@ -117,14 +117,12 @@ class DeviceRequestRecord(Base):
             return True
         return False
 
-    @classmethod
-    def user_record(cls, id):
-        session = get_session()
-        return session.scalars(Select(cls).where(cls.user_id == id)).all()
+    # @classmethod
+    # def user_record(cls, session, id):
+    #     return session.scalars(Select(cls).where(cls.user_id == id)).all()
 
     @classmethod
-    def allot_to_user(cls, user_email, mac_address):
-        session = get_session()
+    def allot_to_user(cls, session, user_email, mac_address):
         device_to_allot = Device.from_mac_address(session, mac_address)
         device_id = device_to_allot.id
         logger.info(

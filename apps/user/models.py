@@ -84,33 +84,15 @@ class User(Base):
         )
 
     @classmethod
-    def change_password(cls, email, **kwargs):
-        session = get_session()
-        user_to_update = cls.from_email(session, email)
-        if auth.verify_password(kwargs["old_password"], user_to_update.password):
-            if auth.verify_password(kwargs["new_password"], user_to_update.password):
-                logger.warning("Same password as old password")
-                raise HTTPException(
-                    status_code=409,
-                    detail=response_model(
-                        message="Same Password",
-                        error="New password same as old password",
-                    ),
-                )
-            user_to_update.password = auth.hash_password(kwargs["new_password"])
-            user_to_update.default_password = False
-            handle_db_transaction(session)
-            logger.info("Password Changed Successfully")
-            return "Password Changed Successfully, Enjoy your account"
+    def change_password(cls, session, user_to_update, new_password):
+        user_to_update.password = auth.hash_password(new_password)
+        user_to_update.default_password = False
+        session.add(user_to_update)
+        handle_db_transaction(session)
+        logger.info("Password Changed Successfully")
+        return "Password Changed Successfully, Enjoy your account"
 
-        logger.warning("Password don't match")
-        raise HTTPException(
-            status_code=409,
-            detail=response_model(
-                message=constants.UNAUTHORIZED,
-                error=constants.UNAUTHORIZED_MESSAGE,
-            ),
-        )
+
 
     @classmethod
     def reset_password(cls, email, new_password):
@@ -126,8 +108,7 @@ class User(Base):
         return response_model(message="Password changed successfully!")
 
     @classmethod
-    def update(cls, user_to_update, **kwargs):
-        session = get_session()
+    def update(cls, user_to_update, session, **kwargs):
         role_to_add = kwargs["role"]
         if role_to_add:
             final_role = Role.from_name(session, role_to_add)
@@ -171,17 +152,7 @@ class User(Base):
         return devices
 
     @classmethod
-    def delete(cls, **args):
-        session = get_session()
-        user_to_delete = cls.from_email(session, args["identifier"])
-        if user_to_delete.devices:
-            raise HTTPException(
-                status_code=409,
-                detail=response_model(
-                    message="Conflict",
-                    error="The user have some devices assigned to them, can't delete the user",
-                ),
-            )
+    def delete(cls,session, user_to_delete):
         user_to_delete.deleted = True
         user_to_delete.deleted_at = datetime.datetime.now(tz=datetime.UTC)
         session.add(user_to_delete)
@@ -190,8 +161,7 @@ class User(Base):
         return "Deleted Successfully"
 
     @classmethod
-    def get_all(cls, page_number, page_size):
-        session = get_session()
+    def get_all(cls, session,page_number, page_size):
         statement = (
             Select(cls)
             .where(cls.deleted == False)  # noqa: E712
@@ -204,8 +174,7 @@ class User(Base):
         return session.scalars(statement).all(), count
 
     @classmethod
-    def from_id(cls, id):
-        session = get_session()
+    def from_id(cls,session, id):
         result = session.scalar(Select(cls).where(cls.id == id, cls.deleted == False))  # noqa: E712
         if not result:
             raise HTTPException(
@@ -310,7 +279,6 @@ class Role(Base):
 
     @classmethod
     def from_name(cls, session, name):
-        # session = get_session()
         result = session.scalar(Select(cls).where(cls.name == name))
         if not result:
             raise HTTPException(
