@@ -117,32 +117,6 @@ class User(Base):
         logger.info(msg=f"{user_to_update.full_name} updated Successful")
         return "Update Successful"
 
-    # @classmethod
-    # def current_device(cls,session, user: dict):
-    #     devices = user.devices
-    #     if not devices:
-    #         raise HTTPException(
-    #             status_code=404,
-    #             detail=response_model(
-    #                 message=constants.REQUEST_NOT_FOUND,
-    #                 error=f"No device is associated with the {user.full_name}",
-    #             ),
-    #         )
-    #     return devices
-
-    # @classmethod
-    # def current_devices_by_user_id(cls, user_id):
-    #     user = cls.from_id(user_id)
-    #     devices = user.devices
-    #     if not devices:
-    #         raise HTTPException(
-    #             status_code=404,
-    #             detail=response_model(
-    #                 message="This user haven't borrowed any devices.",
-    #                 error=f"No device is associated with the {user.full_name}",
-    #             ),
-    #         )
-    #     return devices
 
     @classmethod
     def delete(cls, session, user_to_delete):

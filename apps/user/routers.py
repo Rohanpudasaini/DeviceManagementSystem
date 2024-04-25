@@ -298,7 +298,7 @@ async def current_device(
 async def current_devices_user_id(id: int, session=Depends(get_session)):
     user = User.from_id(session, id)
     current_devices = user.devices
-    if not current_device:
+    if not current_devices:
         raise HTTPException(
             status_code=404,
             detail=response_model(
@@ -306,5 +306,4 @@ async def current_devices_user_id(id: int, session=Depends(get_session)):
                 error=f"No device is associated with the {user.full_name}",
             ),
         )
-    current_devices = User.current_devices_by_user_id(id)
-    return current_devices
+    return response_model(data=current_devices)
