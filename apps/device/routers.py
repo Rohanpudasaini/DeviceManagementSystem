@@ -117,7 +117,7 @@ async def add_device(
     session=Depends(get_session),
 ):
     await log_request(request)
-    mac_exist = Device.from_mac_address(session, deviceAddModel.mac_address)
+    mac_exist = Device.from_mac_address(session, deviceAddModel.mac_address, check=True)
     if not mac_exist:
         return response_model(
             message=Device.add(session, **deviceAddModel.model_dump())

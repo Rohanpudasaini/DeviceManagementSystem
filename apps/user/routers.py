@@ -86,14 +86,22 @@ async def add_user(
     session=Depends(get_session),
 ):
     await log_request(request)
-    password, username, response = User.add(session, **userAddModel.model_dump())
-    backgroundTasks.add_task(
-        send_mail.welcome_mail,
-        email_to_send_to=userAddModel.email,
-        username=username,
-        password=password,
+    email_exist = User.from_email(session,userAddModel.email, check=True)
+    if not email_exist:
+        password, username, response = User.add(session, **userAddModel.model_dump())
+        backgroundTasks.add_task(
+            send_mail.welcome_mail,
+            email_to_send_to=userAddModel.email,
+            username=username,
+            password=password,
+        )
+        return response
+    raise HTTPException(
+        status_code=409,
+        details=response_model(
+            message="Duplicate Value", error="Email already exist"
+        ),
     )
-    return response
 
 
 @router.patch(

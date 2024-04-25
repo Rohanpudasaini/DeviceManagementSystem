@@ -153,11 +153,13 @@ class User(Base):
         return result
 
     @classmethod
-    def from_email(cls, session, email):
+    def from_email(cls, session, email, check= False):
         result = session.scalar(
             Select(cls).where(cls.email == email, cls.deleted == False)  # noqa: E712
         )
         if not result:
+            if check:
+                return False
             raise HTTPException(
                 status_code=404,
                 detail=response_model(

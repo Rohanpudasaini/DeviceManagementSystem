@@ -250,11 +250,13 @@ class Device(Base):
         return result
 
     @classmethod
-    def from_mac_address(cls, session, mac_address):
+    def from_mac_address(cls, session, mac_address, check=False):
         result = session.scalar(
             Select(cls).where(cls.mac_address == mac_address, cls.deleted == False)  # noqa: E712
         )
         if not result:
+            if check:
+                return False
             raise HTTPException(
                 status_code=404,
                 detail=response_model(
