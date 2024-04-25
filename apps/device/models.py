@@ -303,8 +303,8 @@ class Device(Base):
     @classmethod
     def from_category(cls, session, category_name):
         result = session.scalars(
-            Select(cls).where(cls.deleted == False, cls.type == category_name.upper()) # noqa: E712
-        ).all()  
+            Select(cls).where(cls.deleted == False, cls.type == category_name.upper())  # noqa: E712
+        ).all()
         if not result:
             raise HTTPException(
                 status_code=404,
