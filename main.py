@@ -15,7 +15,6 @@ app = FastAPI(
     summary="All your Device related stuff.",
     version="1.0.1",
     root_path="/api/v1",
-    docs_url="/docs"
 )
 
 
@@ -23,6 +22,6 @@ app = FastAPI(
 async def home():
     return "Welcome Home"
 
+
 app.include_router(user_router)
 app.include_router(device_router)
-
