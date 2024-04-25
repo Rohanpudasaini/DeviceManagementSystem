@@ -2,7 +2,7 @@ from fastapi import Depends, HTTPException
 from core import constants
 from core.db import get_session
 from core.utils import response_model
-from . import auth
+from apps.authentication import auth
 from apps.user.models import Role
 
 
