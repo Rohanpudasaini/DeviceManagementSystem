@@ -2,7 +2,7 @@ import datetime
 from fastapi import Depends, Form, HTTPException, BackgroundTasks
 from core.db import get_session, handle_db_transaction
 from apps.device.models import User
-from apps.auth import auth
+from apps.authentication import auth
 from core import constants
 from core.logger import logger
 from core.email import send_mail
@@ -12,7 +12,7 @@ from core.utils import (
 )
 
 
-from apps.auth.schemas import (
+from apps.authentication.schemas import (
     ChangePasswordModel,
     LoginModel,
     RefreshTokenModel,

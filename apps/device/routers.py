@@ -3,8 +3,8 @@ from fastapi import Depends, HTTPException, Request, APIRouter
 from apps.device.enum import DeviceStatus
 from apps.device.models import Device, DeviceRequestRecord, MaintenanceHistory
 from apps.user.models import User
-from apps.auth import auth
-from apps.auth.permissions import PermissionChecker
+from apps.authentication import auth
+from apps.authentication.permissions import PermissionChecker
 from core import constants
 from core.db import get_session
 from core.logger import logger

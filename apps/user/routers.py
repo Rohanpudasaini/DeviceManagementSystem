@@ -4,8 +4,8 @@ from pydantic import EmailStr
 from sqlalchemy import Select
 from core.db import get_session
 from apps.device.models import DeviceRequestRecord, User
-from apps.auth import auth
-from apps.auth.permissions import PermissionChecker
+from apps.authentication import auth
+from apps.authentication.permissions import PermissionChecker
 from core import constants
 from core.email import send_mail
 from core.utils import (

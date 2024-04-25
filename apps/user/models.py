@@ -9,7 +9,7 @@ from core.utils import (
 from apps.user.schemas import Designation, RoleType
 import datetime
 from core.db import handle_db_transaction
-from apps.auth import auth
+from apps.authentication import auth
 from core import constants
 from core.logger import logger
 from core.db import Base
