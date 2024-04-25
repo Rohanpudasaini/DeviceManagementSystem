@@ -1,43 +1,34 @@
-from sqlalchemy import create_engine, URL
-from sqlalchemy.orm import Session, sessionmaker
+from contextlib import contextmanager
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException
 from core import constants
 from core.logger import logger
-import os
 from sqlalchemy.orm import DeclarativeBase
 
 from core.utils import response_model
+from core.config import config
 
-host = os.getenv("HOST")
-database = os.getenv("DATABASE")
-password = os.getenv("PASSWORD")
-user = os.getenv("USER")
+engine = create_engine(config.database_url, pool_size=15, echo=False)
+SessionLocal = sessionmaker(autocommit=False, bind=engine, autoflush=False)
 
-url = URL.create(
-    username=user,
-    password=password,
-    host=host,
-    database=database,
-    drivername="postgresql",
-)
-
-engine = create_engine(url, echo=False)
-session = Session(bind=engine)
-session_local = sessionmaker(autocommit=False,bind=engine, autoflush=False,)
 
 
 def get_session():
-    session_instance = session_local()
     try:
-        yield session_instance
+        session = SessionLocal()
+        return session
+    except Exception:
+        session.rollback()
     finally:
-        session_instance.close()
+        session.close()
+
 class Base(DeclarativeBase):
     pass
 
 # Base.metadata.create_all(engine)
-def handle_db_transaction(session = next(get_session())):
+def handle_db_transaction(session: Session):
     try:
         session.commit()
         return

@@ -2,20 +2,14 @@ import time
 from typing import Annotated
 from fastapi import HTTPException
 from jose import jwt, JWTError
-import os
 import bcrypt
 from fastapi import Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from core.utils import response_model
 from core import constants
+from core.config import config
 
 contain_header = HTTPBearer(auto_error=False)
-
-ACCESS_SECRET = os.getenv("SECRET_ACCESS")
-REFRESH_SECRET = os.getenv("SECRET_REFRESH")
-ALGORITHM = os.getenv("ALGORITHM")
-OTP_SECRET = os.getenv("OTP_SECRET")
-
 
 def generate_JWT(
     email: str,
@@ -25,15 +19,15 @@ def generate_JWT(
         "expiry": time.time() + 1200,
         # 'expiry': time.time() + 240
     }
-    encoded_access = jwt.encode(payload, ACCESS_SECRET, algorithm=ALGORITHM)
+    encoded_access = jwt.encode(payload, config.secret_access, algorithm=config.algorithm)
     payload = {"user_identifier": email, "expiry": time.time() + 604800}
-    encoded_refresh = jwt.encode(payload, REFRESH_SECRET, ALGORITHM)
+    encoded_refresh = jwt.encode(payload, config.secret_refresh, config.algorithm)
     return encoded_access, encoded_refresh
 
 
 def decodeAccessJWT(token: str):
     try:
-        decode_token = jwt.decode(token, ACCESS_SECRET, ALGORITHM)
+        decode_token = jwt.decode(token, config.secret_access, config.algorithm)
         # return decode_token if decode_token['expiry'] >= time.time() else None
         if decode_token["expiry"] >= time.time():
             return decode_token
@@ -57,7 +51,7 @@ def decodeAccessJWT(token: str):
 
 def decodeRefreshJWT(token: str):
     try:
-        decode_token = jwt.decode(token, REFRESH_SECRET, ALGORITHM)
+        decode_token = jwt.decode(token, config.secret_refresh, config.algorithm)
         # return decode_token if decode_token['expiry'] >= time.time() else None
         if decode_token["expiry"] >= time.time():
             new_token, _ = generate_JWT(decode_token["user_identifier"])
@@ -87,13 +81,13 @@ def generate_otp_JWT(email: str):
         # 'expiry': time.time() + 1200
         "expiry": time.time() + 1240,
     }
-    encoded_otp = jwt.encode(payload, OTP_SECRET, algorithm=ALGORITHM)
+    encoded_otp = jwt.encode(payload, config.otp_secret, algorithm=config.algorithm)
     return encoded_otp
 
 
 def decode_otp_jwt(token: str):
     try:
-        decode_token = jwt.decode(token=token, key=OTP_SECRET, algorithms=ALGORITHM)
+        decode_token = jwt.decode(token=token, key=config.otp_secret, algorithms=config.algorithm)
         if decode_token["expiry"] >= time.time():
             return decode_token
         else:

@@ -19,7 +19,7 @@ from apps.device.schemas import (
 )
 from core.pydantic import DeleteModel
 
-router = APIRouter(prefix='/device')
+router = APIRouter(prefix='/api/v1/device')
 
 
 @router.get(

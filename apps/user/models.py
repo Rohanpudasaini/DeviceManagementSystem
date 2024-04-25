@@ -47,8 +47,8 @@ class User(Base):
         return f"{self.first_name} {self.last_name}"
 
     @classmethod
-    def add(cls, **kwargs):
-        session = next(get_session())
+    def add(cls, session, **kwargs):
+        # session = get_session()
         password = generate_password(12)
         kwargs["password"] = auth.hash_password(password)
         role_to_add = kwargs.get("role")
@@ -57,11 +57,11 @@ class User(Base):
         if not user_exist:
             user_to_add = cls(**kwargs)
             if role_to_add:
-                role = Role.from_name(role_to_add)
+                role = Role.from_name(session, role_to_add)
                 if role:
                     user_to_add.role_id = [role]
                 else:
-                    role = Role.from_name("viewer")
+                    role = Role.from_name(session, "viewer")
                     user_to_add.role_id = [role]
             session.add(user_to_add)
             handle_db_transaction(session)
@@ -85,8 +85,8 @@ class User(Base):
 
     @classmethod
     def change_password(cls, email, **kwargs):
-        session = next(get_session())
-        user_to_update = cls.from_email(email)
+        session = get_session()
+        user_to_update = cls.from_email(session, email)
         if auth.verify_password(kwargs["old_password"], user_to_update.password):
             if auth.verify_password(kwargs["new_password"], user_to_update.password):
                 logger.warning("Same password as old password")
@@ -114,8 +114,8 @@ class User(Base):
 
     @classmethod
     def reset_password(cls, email, new_password):
-        session = next(get_session())
-        user_object = cls.from_email(email)
+        session = get_session()
+        user_object = cls.from_email(session, email)
         password = auth.hash_password(new_password)
         user_object.password = password
         user_object.temp_password = None
@@ -127,10 +127,10 @@ class User(Base):
 
     @classmethod
     def update(cls, user_to_update, **kwargs):
-        session = next(get_session())
+        session = get_session()
         role_to_add = kwargs["role"]
         if role_to_add:
-            final_role = Role.from_name(role_to_add)
+            final_role = Role.from_name(session, role_to_add)
             if final_role:
                 user_to_update.role_id = [final_role]
         for key, value in kwargs.items():
@@ -143,7 +143,8 @@ class User(Base):
 
     @classmethod
     def current_device(cls, email: dict):
-        user = cls.from_email(email)
+        session = get_session()
+        user = cls.from_email(session, email)
         devices = user.devices
         if not devices:
             raise HTTPException(
@@ -171,8 +172,8 @@ class User(Base):
 
     @classmethod
     def delete(cls, **args):
-        session = next(get_session())
-        user_to_delete = cls.from_email(args["identifier"])
+        session = get_session()
+        user_to_delete = cls.from_email(session, args["identifier"])
         if user_to_delete.devices:
             raise HTTPException(
                 status_code=409,
@@ -190,7 +191,7 @@ class User(Base):
 
     @classmethod
     def get_all(cls, page_number, page_size):
-        session = next(get_session())
+        session = get_session()
         statement = (
             Select(cls)
             .where(cls.deleted == False)  # noqa: E712
@@ -204,7 +205,7 @@ class User(Base):
 
     @classmethod
     def from_id(cls, id):
-        session = next(get_session())
+        session = get_session()
         result = session.scalar(Select(cls).where(cls.id == id, cls.deleted == False))  # noqa: E712
         if not result:
             raise HTTPException(
@@ -217,8 +218,7 @@ class User(Base):
         return result
 
     @classmethod
-    def from_email(cls, email):
-        session = next(get_session())
+    def from_email(cls, session, email):
         result = session.scalar(
             Select(cls).where(cls.email == email, cls.deleted == False)  # noqa: E712
         )
@@ -234,8 +234,8 @@ class User(Base):
 
     @classmethod
     def login(cls, **kwargs):
-        session = next(get_session())
-        user_object = cls.from_email(kwargs["email"])
+        session = get_session()
+        user_object = cls.from_email(session, kwargs["email"])
         is_valid = auth.verify_password(kwargs["password"], user_object.password)
         if is_valid:
             access_token, refresh_token = auth.generate_JWT(email=user_object.email)
@@ -289,7 +289,8 @@ class User(Base):
 
     @classmethod
     def get_all_role(cls, email):
-        user_object = cls.from_email(email)
+        session = get_session()
+        user_object = cls.from_email(session, email)
         return user_object.role_id.all()
 
 
@@ -308,8 +309,8 @@ class Role(Base):
     )
 
     @classmethod
-    def from_name(cls, name):
-        session = next(get_session())
+    def from_name(cls, session, name):
+        # session = get_session()
         result = session.scalar(Select(cls).where(cls.name == name))
         if not result:
             raise HTTPException(
@@ -323,7 +324,7 @@ class Role(Base):
 
     @classmethod
     def name_from_id(cls, id):
-        session = next(get_session())
+        session = get_session()
         result = session.scalar(Select(cls.name).where(cls.id == id))
         if not result:
             raise HTTPException(
@@ -336,7 +337,7 @@ class Role(Base):
         return result
 
     def role_got_permission(permission_required, email_of_user):
-        session = next(get_session())
+        session = get_session()
         permission_object = Permission.from_scope(permission_required)
         permission_id = permission_object.id
         users_all_role = User.get_all_role(email_of_user)
@@ -365,7 +366,7 @@ class Permission(Base):
 
     @classmethod
     def from_scope(cls, scope):
-        session = next(get_session())
+        session = get_session()
         result = session.scalar(Select(cls).where(cls.scope == scope))
         if not result:
             raise HTTPException(

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, FastAPI
+from fastapi import FastAPI
 from apps.user.routers import router as user_router
 from apps.device.routers import router as device_router
 
@@ -18,13 +18,11 @@ app = FastAPI(
     docs_url="/docs"
 )
 
-api_v1 = APIRouter()
 
-@api_v1.get("/", tags=["Home"])
+@app.get("/", tags=["Home"])
 async def home():
     return "Welcome Home"
 
-api_v1.include_router(user_router)
-api_v1.include_router(device_router)
-app.include_router(api_v1)
+app.include_router(user_router)
+app.include_router(device_router)
 
