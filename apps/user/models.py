@@ -95,9 +95,7 @@ class User(Base):
 
 
     @classmethod
-    def reset_password(cls, email, new_password):
-        session = get_session()
-        user_object = cls.from_email(session, email)
+    def reset_password(cls,session, user_object, new_password):
         password = auth.hash_password(new_password)
         user_object.password = password
         user_object.temp_password = None
@@ -122,34 +120,32 @@ class User(Base):
         logger.info(msg=f"{user_to_update.full_name} updated Successful")
         return "Update Successful"
 
-    @classmethod
-    def current_device(cls, email: dict):
-        session = get_session()
-        user = cls.from_email(session, email)
-        devices = user.devices
-        if not devices:
-            raise HTTPException(
-                status_code=404,
-                detail=response_model(
-                    message=constants.REQUEST_NOT_FOUND,
-                    error=f"No device is associated with the {user.full_name}",
-                ),
-            )
-        return devices
+    # @classmethod
+    # def current_device(cls,session, user: dict):
+    #     devices = user.devices
+    #     if not devices:
+    #         raise HTTPException(
+    #             status_code=404,
+    #             detail=response_model(
+    #                 message=constants.REQUEST_NOT_FOUND,
+    #                 error=f"No device is associated with the {user.full_name}",
+    #             ),
+    #         )
+    #     return devices
 
-    @classmethod
-    def current_devices_by_user_id(cls, user_id):
-        user = cls.from_id(user_id)
-        devices = user.devices
-        if not devices:
-            raise HTTPException(
-                status_code=404,
-                detail=response_model(
-                    message="This user haven't borrowed any devices.",
-                    error=f"No device is associated with the {user.full_name}",
-                ),
-            )
-        return devices
+    # @classmethod
+    # def current_devices_by_user_id(cls, user_id):
+    #     user = cls.from_id(user_id)
+    #     devices = user.devices
+    #     if not devices:
+    #         raise HTTPException(
+    #             status_code=404,
+    #             detail=response_model(
+    #                 message="This user haven't borrowed any devices.",
+    #                 error=f"No device is associated with the {user.full_name}",
+    #             ),
+    #         )
+    #     return devices
 
     @classmethod
     def delete(cls,session, user_to_delete):
@@ -202,9 +198,7 @@ class User(Base):
         return result
 
     @classmethod
-    def login(cls, **kwargs):
-        session = get_session()
-        user_object = cls.from_email(session, kwargs["email"])
+    def login(cls,session,user_object, **kwargs):
         is_valid = auth.verify_password(kwargs["password"], user_object.password)
         if is_valid:
             access_token, refresh_token = auth.generate_JWT(email=user_object.email)
@@ -212,7 +206,7 @@ class User(Base):
                 role_id = session.scalars(
                     Select(UserRole.role_id).where(UserRole.user_id == user_object.id)
                 ).first()
-                role_name = Role.name_from_id(role_id)
+                role_name = Role.name_from_id(session,role_id)
                 user_object.temp_password = None
                 user_object.temp_password_created_at = None
                 logger.info("Login Successful")
@@ -257,8 +251,7 @@ class User(Base):
         )
 
     @classmethod
-    def get_all_role(cls, email):
-        session = get_session()
+    def get_all_role(cls,session, email):
         user_object = cls.from_email(session, email)
         return user_object.role_id.all()
 
@@ -291,8 +284,7 @@ class Role(Base):
         return result
 
     @classmethod
-    def name_from_id(cls, id):
-        session = get_session()
+    def name_from_id(cls,session, id):
         result = session.scalar(Select(cls.name).where(cls.id == id))
         if not result:
             raise HTTPException(
@@ -304,11 +296,11 @@ class Role(Base):
             )
         return result
 
-    def role_got_permission(permission_required, email_of_user):
-        session = get_session()
-        permission_object = Permission.from_scope(permission_required)
+    @classmethod
+    def role_got_permission(cls,session,permission_required, email_of_user):
+        permission_object = Permission.from_scope(session,permission_required)
         permission_id = permission_object.id
-        users_all_role = User.get_all_role(email_of_user)
+        users_all_role = User.get_all_role(session,email_of_user)
         for role in users_all_role:
             result = session.scalar(
                 Select(RolePermission).where(
@@ -333,8 +325,7 @@ class Permission(Base):
     )
 
     @classmethod
-    def from_scope(cls, scope):
-        session = get_session()
+    def from_scope(cls,session, scope):
         result = session.scalar(Select(cls).where(cls.scope == scope))
         if not result:
             raise HTTPException(

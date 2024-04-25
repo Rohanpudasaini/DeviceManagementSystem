@@ -167,10 +167,12 @@ async def user_records(
 def update_password(
     changePasswordModel: ChangePasswordModel,
     token=Depends(auth.validate_token),
-    session = Depends(get_session)
+    session=Depends(get_session),
 ):
-    user_to_update = User.from_email(session,token.get("user_identifier"))
-    if not auth.verify_password(changePasswordModel.old_password, user_to_update.password):
+    user_to_update = User.from_email(session, token.get("user_identifier"))
+    if not auth.verify_password(
+        changePasswordModel.old_password, user_to_update.password
+    ):
         logger.warning("Password don't match")
         raise HTTPException(
             status_code=409,
@@ -180,24 +182,35 @@ def update_password(
             ),
         )
     if auth.verify_password(changePasswordModel.new_password, user_to_update.password):
-                logger.warning("Same password as old password")
-                raise HTTPException(
-                    status_code=409,
-                    detail=response_model(
-                        message="Same Password",
-                        error="New password same as old password",
-                    ),
-                )
+        logger.warning("Same password as old password")
+        raise HTTPException(
+            status_code=409,
+            detail=response_model(
+                message="Same Password",
+                error="New password same as old password",
+            ),
+        )
     return response_model(
         message=User.change_password(
-            session, user_to_update , changePasswordModel.new_password
+            session, user_to_update, changePasswordModel.new_password
         )
     )
 
 
 @router.get("/user/current-device", tags=["User"])
-async def current_device(token: str = Depends(auth.validate_token)):
-    current_device = User.current_device(token)
+async def current_device(
+    token: str = Depends(auth.validate_token), session=Depends(get_session)
+):
+    user = User.from_email(session, token["user_identifier"])
+    current_device = user.devices
+    if not current_device:
+        raise HTTPException(
+            status_code=404,
+            detail=response_model(
+                message=constants.REQUEST_NOT_FOUND,
+                error=f"No device is associated with the {user.full_name}",
+            ),
+        )
     return response_model(data=current_device)
 
 
@@ -206,23 +219,48 @@ async def current_device(token: str = Depends(auth.validate_token)):
     tags=["User"],
     dependencies=[Depends(PermissionChecker("all_access"))],
 )
-async def current_devices_user_id(id: int):
+async def current_devices_user_id(id: int, session=Depends(get_session)):
+    user = User.from_id(session, id)
+    current_devices = user.devices
+    if not current_device:
+        raise HTTPException(
+            status_code=404,
+            detail=response_model(
+                message=constants.REQUEST_NOT_FOUND,
+                error=f"No device is associated with the {user.full_name}",
+            ),
+        )
     current_devices = User.current_devices_by_user_id(id)
     return current_devices
 
 
 @router.post("/password/reset", tags=["Authentication"])
-def reset_password(token=Form(), new_password=Form(), confirm_password=Form()):
+def reset_password(
+    token=Form(),
+    new_password=Form(),
+    confirm_password=Form(),
+    session=Depends(get_session),
+):
+    if new_password != confirm_password:
+        raise HTTPException(
+            status_code=400,
+            detail= response_model(
+                message="Bad Request",
+                error = "The password do not match"
+            )
+        )
     email = auth.decode_otp_jwt(token)
     email = email["user_identifier"]
-    result = User.reset_password(email, new_password, confirm_password)
+    user = User.from_email(session,email)
+    result = User.reset_password(session,user, new_password, confirm_password)
     if result:
         return response_model(message="Your password has been successfully updated.")
 
 
 @router.post("/user/login", tags=["User"])
-async def login(loginModel: LoginModel):
-    return User.login(**loginModel.model_dump())
+async def login(loginModel: LoginModel, session=Depends(get_session),):
+    user_object = User.from_email(session,loginModel.email)
+    return User.login(session,user_object,**loginModel.model_dump())
 
 
 @router.post("/user/refresh-token", tags=["User"], status_code=201)
@@ -247,7 +285,7 @@ async def forget_password(
     backgroundTasks: BackgroundTasks,
     session=Depends(get_session),
 ):
-    user_object = User.from_email(resetPassword.email)
+    user_object = User.from_email(session,resetPassword.email)
     if not user_object:
         raise HTTPException(
             status_code=404,
