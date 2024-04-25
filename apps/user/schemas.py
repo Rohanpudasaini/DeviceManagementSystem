@@ -1,10 +1,6 @@
 from pydantic import EmailStr
-from apps.user.enum import Designation, RoleType
 from core.pydantic import BaseSchema
-
-
-class RefreshTokenModel(BaseSchema):
-    token: str
+from apps.user.enum import Designation, RoleType
 
 
 class UserAddModel(BaseSchema):
@@ -19,6 +15,7 @@ class UserAddModel(BaseSchema):
     profile_pic_url: str | None = None
     role: RoleType | None = RoleType.viewer
 
+
 class UserUpdateModel(BaseSchema):
     first_name: str | None = None
     last_name: str | None = None
@@ -30,17 +27,3 @@ class UserUpdateModel(BaseSchema):
     designation: Designation | None = None
     profile_pic_url: str | None = None
     role: RoleType | None = RoleType.viewer
-
-class LoginModel(BaseSchema):
-    email: EmailStr
-    password: str
-
-
-class ChangePasswordModel(BaseSchema):
-    old_password: str
-    new_password: str
-
-
-class ResetPasswordModel(BaseSchema):
-    email: EmailStr
-

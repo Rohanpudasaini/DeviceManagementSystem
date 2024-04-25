@@ -9,7 +9,7 @@ from core.utils import (
 from apps.user.schemas import Designation, RoleType
 import datetime
 from core.db import handle_db_transaction
-from auth import auth
+from apps.auth import auth
 from core import constants
 from core.logger import logger
 from core.db import Base
@@ -92,7 +92,7 @@ class User(Base):
         return "Password Changed Successfully, Enjoy your account"
 
     @classmethod
-    def reset_password(cls,session, user_object, new_password):
+    def reset_password(cls, session, user_object, new_password):
         password = auth.hash_password(new_password)
         user_object.password = password
         user_object.temp_password = None
@@ -116,7 +116,6 @@ class User(Base):
         handle_db_transaction(session)
         logger.info(msg=f"{user_to_update.full_name} updated Successful")
         return "Update Successful"
-
 
     @classmethod
     def delete(cls, session, user_to_delete):
@@ -169,7 +168,7 @@ class User(Base):
         return result
 
     @classmethod
-    def login(cls,session,user_object, **kwargs):
+    def login(cls, session, user_object, **kwargs):
         is_valid = auth.verify_password(kwargs["password"], user_object.password)
         if is_valid:
             access_token, refresh_token = auth.generate_JWT(email=user_object.email)
@@ -177,9 +176,11 @@ class User(Base):
                 role_id = session.scalars(
                     Select(UserRole.role_id).where(UserRole.user_id == user_object.id)
                 ).first()
-                role_name = Role.name_from_id(session,role_id)
+                role_name = Role.name_from_id(session, role_id)
                 user_object.temp_password = None
                 user_object.temp_password_created_at = None
+                session.add(user_object)
+                handle_db_transaction(session)
                 logger.info("Login Successful")
                 return response_model(
                     message="Login Successful",
@@ -223,7 +224,7 @@ class User(Base):
         )
 
     @classmethod
-    def get_all_role(cls,session, email):
+    def get_all_role(cls, session, email):
         user_object = cls.from_email(session, email)
         return user_object.role_id.all()
 
@@ -256,7 +257,7 @@ class Role(Base):
         return result
 
     @classmethod
-    def name_from_id(cls,session, id):
+    def name_from_id(cls, session, id):
         result = session.scalar(Select(cls.name).where(cls.id == id))
         if not result:
             raise HTTPException(
@@ -269,10 +270,10 @@ class Role(Base):
         return result
 
     @classmethod
-    def role_got_permission(cls,session,permission_required, email_of_user):
-        permission_object = Permission.from_scope(session,permission_required)
+    def role_got_permission(cls, session, permission_required, email_of_user):
+        permission_object = Permission.from_scope(session, permission_required)
         permission_id = permission_object.id
-        users_all_role = User.get_all_role(session,email_of_user)
+        users_all_role = User.get_all_role(session, email_of_user)
         for role in users_all_role:
             result = session.scalar(
                 Select(RolePermission).where(
@@ -297,7 +298,7 @@ class Permission(Base):
     )
 
     @classmethod
-    def from_scope(cls,session, scope):
+    def from_scope(cls, session, scope):
         result = session.scalar(Select(cls).where(cls.scope == scope))
         if not result:
             raise HTTPException(
