@@ -28,21 +28,25 @@ class MaintenanceHistory(Base):
     returned_from_repair = mapped_column(DateTime)
 
     @classmethod
-    def add(cls, mac_address, email, **kwargs):
-        session = get_session()
+    def add(cls, session, mac_address, email, **kwargs):
         user_email = email
         device_to_repair_mac_address = mac_address
         logger.info(
             f"User with email {user_email} have requested to repair device with mac address {device_to_repair_mac_address}."
         )
-        device_to_repair = Device.from_mac_address(session, device_to_repair_mac_address)
-        if not device_to_repair.available or device_to_repair.status == DeviceStatus.INACTIVE:
+        device_to_repair = Device.from_mac_address(
+            session, device_to_repair_mac_address
+        )
+        if (
+            not device_to_repair.available
+            or device_to_repair.status == DeviceStatus.INACTIVE
+        ):
             raise HTTPException(
-                status_code= 409,
-                detail= response_model(
-                    message = "Device In Maintenance",
-                    error = "The device you have request for is in maintenance"
-                )
+                status_code=409,
+                detail=response_model(
+                    message="Device In Maintenance",
+                    error="The device you have request for is in maintenance",
+                ),
             )
         user = User.from_email(user_email)
         kwargs["devices"] = device_to_repair
@@ -62,14 +66,14 @@ class MaintenanceHistory(Base):
         return "Successfully Given For Repair"
 
     @classmethod
-    def update(cls, mac_address, **kwargs):
-        session = get_session()
+    def update(cls, session, mac_address, **kwargs):
         mac_address = mac_address
         returned_device = Device.from_mac_address(session, mac_address)
         device_id = returned_device.id
         record_to_update = session.scalar(
             Select(cls).where(
-                cls.device_id == device_id, cls.returned_from_repair == None # noqa: E711
+                cls.device_id == device_id,
+                cls.returned_from_repair == None,  # noqa: E711
             )
         )
         if record_to_update:
@@ -77,7 +81,7 @@ class MaintenanceHistory(Base):
                 if values is not None:
                     setattr(record_to_update, key, values)
             # returned_device = Device.from_id(device_id)
-            user_object = User.from_id(record_to_update.user_id)
+            user_object = User.from_id(session, record_to_update.user_id)
             returned_device.user = user_object
             returned_device.status = DeviceStatus.ACTIVE
             session.add(record_to_update)
@@ -85,16 +89,15 @@ class MaintenanceHistory(Base):
             handle_db_transaction(session)
             return f"The device with id {device_id} returned Successfully"
         raise HTTPException(
-            status_code= 404,
-            detail= response_model(
-                message= constants.REQUEST_NOT_FOUND,
-                error = constants.request_not_found("record", "for that device")
-            )
+            status_code=404,
+            detail=response_model(
+                message=constants.REQUEST_NOT_FOUND,
+                error=constants.request_not_found("record", "for that device"),
+            ),
         )
-    
+
     @classmethod
-    def device_maintenance_history(cls, device_id):
-        session = get_session()
+    def device_maintenance_history(cls, session, device_id):
         return session.scalars(Select(cls).where(cls.device_id == device_id)).all()
 
 
@@ -117,10 +120,6 @@ class DeviceRequestRecord(Base):
             return True
         return False
 
-    # @classmethod
-    # def user_record(cls, session, id):
-    #     return session.scalars(Select(cls).where(cls.user_id == id)).all()
-
     @classmethod
     def allot_to_user(cls, session, user_email, mac_address):
         device_to_allot = Device.from_mac_address(session, mac_address)
@@ -129,7 +128,7 @@ class DeviceRequestRecord(Base):
             f"Trying to allot a device with device id {device_id} to user \
             with email {user_email}"
         )
-        requested_user = User.from_email(user_email)
+        requested_user = User.from_email(session, user_email)
         if not device_to_allot.deleted:
             if device_to_allot.available:
                 if device_to_allot.status.value != "active":
@@ -138,9 +137,7 @@ class DeviceRequestRecord(Base):
                         status_code=404,
                         detail=response_model(
                             message=constants.REQUEST_NOT_FOUND,
-                            error=constants.request_not_found(
-                                "device", "device id"
-                            ),
+                            error=constants.request_not_found("device", "device id"),
                         ),
                     )
                 device_to_allot.user = requested_user
@@ -177,14 +174,13 @@ class DeviceRequestRecord(Base):
         )
 
     @classmethod
-    def return_device(cls, user_email, mac_address):
-        session = get_session()
+    def return_device(cls, session, user_email, mac_address):
         device_to_return = Device.from_mac_address(session, mac_address)
         device_id = device_to_return.id
         logger.info(
             f"Trying to return device with id {device_id} by user with id {user_email}"
         )
-        returned_user = User.from_email(user_email)
+        returned_user = User.from_email(session, user_email)
         device_to_return.user = None
         device_to_return.available = True
         session.add(device_to_return)
@@ -193,7 +189,7 @@ class DeviceRequestRecord(Base):
             Select(cls).where(
                 cls.device_id == device_id,
                 cls.user_id == returned_user.id,
-                cls.returned_date == None, # noqa: E711
+                cls.returned_date == None,  # noqa: E711
             )
         )
         if record_to_update:
@@ -216,9 +212,9 @@ class DeviceRequestRecord(Base):
         )
 
     @classmethod
-    def device_owner_history(cls, device_id):
-        session = get_session()
+    def device_owner_history(cls, session, device_id):
         return session.scalars(Select(cls).where(cls.device_id == device_id)).all()
+
 
 class Device(Base):
     __tablename__ = "device"
@@ -245,26 +241,28 @@ class Device(Base):
     # record = relationship('DeviceRequestRecord', back_populates='device')
 
     @classmethod
-    def add(cls, **kwargs):
-        session = get_session()
+    def add(cls, session, **kwargs):
         device_to_add = cls(**kwargs)
-        device_exists = session.scalar(Select(cls).where(cls.mac_address==kwargs['mac_address']))
+        device_exists = session.scalar(
+            Select(cls).where(cls.mac_address == kwargs["mac_address"])
+        )
         if not device_exists:
             session.add(device_to_add)
             handle_db_transaction(session)
-            logger.info({"success": "Device Added Successfully", "device_details": kwargs})
+            logger.info(
+                {"success": "Device Added Successfully", "device_details": kwargs}
+            )
             return "Device Added Successfully"
         raise HTTPException(
-            status_code= 409,
-            detail= response_model(
-                message= constants.INTEGRITY_ERROR,
-                error= constants.INTEGRITY_ERROR_MESSAGE
-            )
+            status_code=409,
+            detail=response_model(
+                message=constants.INTEGRITY_ERROR,
+                error=constants.INTEGRITY_ERROR_MESSAGE,
+            ),
         )
 
     @classmethod
-    def update(cls, mac_address, **kwargs):
-        session = get_session()
+    def update(cls, session, mac_address, **kwargs):
         device_to_update = cls.from_mac_address(session, mac_address)
         for key, value in kwargs.items():
             if value:
@@ -277,8 +275,7 @@ class Device(Base):
         return "Update Successful"
 
     @classmethod
-    def delete(cls, mac_address):
-        session = get_session()
+    def delete(cls, session, mac_address):
         device_to_delete = cls.from_mac_address(session, mac_address)
         device_to_delete.available = False
         device_to_delete.deleted = True
@@ -291,74 +288,72 @@ class Device(Base):
         return "Deleted Successfully"
 
     @classmethod
-    def from_id(cls, id):
-        session = get_session()
-        result= session.scalar(Select(cls).where(cls.id == id, cls.deleted == False))# noqa: E712
+    def from_id(cls, session, id):
+        result = session.scalar(Select(cls).where(cls.id == id, cls.deleted == False))  # noqa: E712
         if not result:
             raise HTTPException(
-                status_code= 404,
-                detail= response_model(
-                    message= constants.REQUEST_NOT_FOUND,
-                    error = constants.request_not_found("device", "id")
-                )
+                status_code=404,
+                detail=response_model(
+                    message=constants.REQUEST_NOT_FOUND,
+                    error=constants.request_not_found("device", "id"),
+                ),
             )
         return result
 
     @classmethod
-    def from_category(cls,category_name):
-        session = get_session()
-        result =  session.scalars(Select(cls).where(cls.deleted == False, cls.type==category_name.upper())).all()# noqa: E712
+    def from_category(cls, session, category_name):
+        result = session.scalars(
+            Select(cls).where(cls.deleted == False, cls.type == category_name.upper())
+        ).all()  # noqa: E712
         if not result:
             raise HTTPException(
-                status_code= 404,
-                detail= response_model(
-                    message= constants.REQUEST_NOT_FOUND,
-                    error = constants.request_not_found("device", 'category')
-                )
+                status_code=404,
+                detail=response_model(
+                    message=constants.REQUEST_NOT_FOUND,
+                    error=constants.request_not_found("device", "category"),
+                ),
             )
         return result
-
-
 
     @classmethod
     def from_mac_address(cls, session, mac_address):
         result = session.scalar(
-            Select(cls).where(cls.mac_address == mac_address, cls.deleted == False)# noqa: E712
+            Select(cls).where(cls.mac_address == mac_address, cls.deleted == False)  # noqa: E712
         )
         if not result:
             raise HTTPException(
-                status_code= 404,
-                detail= response_model(
-                    message = constants.REQUEST_NOT_FOUND,
-                    error = constants.request_not_found('device', 'mac address')
-                )
+                status_code=404,
+                detail=response_model(
+                    message=constants.REQUEST_NOT_FOUND,
+                    error=constants.request_not_found("device", "mac address"),
+                ),
             )
         return result
 
     @classmethod
-    def get_all(cls, page_number, page_size):
+    def get_all(cls, session, page_number, page_size):
         session = get_session()
         statement = (
             Select(cls)
-            .where(cls.available == True, cls.deleted == False)   # noqa: E712
+            .where(cls.available == True, cls.deleted == False)  # noqa: E712
             .offset(((page_number - 1) * page_size))
             .limit(page_size)
         )
         count = session.scalar(
             Select(func.count())
             .select_from(cls)
-            .where(cls.available == True, cls.deleted == False) # noqa: E712
+            .where(cls.available == True, cls.deleted == False)  # noqa: E712
         )
         result = session.scalars(statement).all()
         return result, count
 
     @classmethod
-    def search_device(cls, name, brand):
+    def search_device(cls, session, name, brand):
         session = get_session()
         if name and brand:
             devices = session.scalars(
                 Select(cls).filter(
-                    cls.deleted == False, # noqa: E712
+                    cls.deleted == False,  # noqa: E712
                     cls.name.icontains(name),
                     cls.brand.icontains(brand),
                 )
@@ -366,15 +361,11 @@ class Device(Base):
             return devices
         if name:
             devices = session.scalars(
-                Select(cls).filter(cls.deleted == False, cls.name.icontains(name)) # noqa: E712
+                Select(cls).filter(cls.deleted == False, cls.name.icontains(name))  # noqa: E712
             ).all()
             return devices
         elif brand:
             devices = session.scalars(
-                Select(cls).filter(cls.deleted == False, cls.brand.icontains(brand)) # noqa: E712
+                Select(cls).filter(cls.deleted == False, cls.brand.icontains(brand))  # noqa: E712
             ).all()
             return devices
-
-
-
-

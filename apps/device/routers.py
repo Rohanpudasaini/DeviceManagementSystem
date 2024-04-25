@@ -4,6 +4,7 @@ from apps.device.models import Device, DeviceRequestRecord, MaintenanceHistory
 from auth import auth
 from auth.permissions import PermissionChecker
 from core import constants
+from core.db import get_session
 from core.logger import logger
 from core.utils import (
     response_model,
@@ -19,7 +20,7 @@ from apps.device.schemas import (
 )
 from core.pydantic import DeleteModel
 
-router = APIRouter(prefix='/api/v1/device')
+router = APIRouter(prefix="/api/v1/device")
 
 
 @router.get(
@@ -42,19 +43,20 @@ async def get_all_device(
     name: str | None = None,
     brand: str | None = None,
     category: str | None = None,
+    session=Depends(get_session),
 ):
     if page_number < 1:
         page_number = 1
     await log_request(request)
     if category:
-        result = Device.from_category(category)
+        result = Device.from_category(session, category)
         count = len(result)
         return response_model(data={"pagination": {"total": count}, "result": result})
     if mac_address:
-        device_info = Device.from_mac_address(mac_address)
+        device_info = Device.from_mac_address(session, mac_address)
         return response_model(data=device_info)
     if name or brand:
-        device = Device.search_device(name, brand)
+        device = Device.search_device(session, name, brand)
         if device:
             count = len(device)
             logger.info({"pagination": {"total": count}, "result": device})
@@ -67,7 +69,9 @@ async def get_all_device(
                 error=constants.request_not_found("Device", "Brand or Name"),
             )
 
-    result, count = Device.get_all(page_number=page_number, page_size=page_size)
+    result, count = Device.get_all(
+        session, page_number=page_number, page_size=page_size
+    )
     final_page = ceil(count / page_size)
     if result:
         logger.info([singleresult.__dict__ for singleresult in result])
@@ -105,9 +109,13 @@ async def get_all_device(
     status_code=201,
     dependencies=[Depends(PermissionChecker("create_device"))],
 )
-async def add_device(deviceAddModel: DeviceAddModel, request: Request):
+async def add_device(
+    deviceAddModel: DeviceAddModel,
+    request: Request,
+    session=Depends(get_session),
+):
     await log_request(request)
-    return response_model(message=Device.add(**deviceAddModel.model_dump()))
+    return response_model(message=Device.add(session, **deviceAddModel.model_dump()))
 
 
 @router.patch(
@@ -116,11 +124,14 @@ async def add_device(deviceAddModel: DeviceAddModel, request: Request):
     dependencies=[Depends(PermissionChecker("update_device"))],
 )
 async def update_device(
-    deviceUpdateModel: DeviceUpdateModel, request: Request, mac_address: str
+    deviceUpdateModel: DeviceUpdateModel,
+    request: Request,
+    mac_address: str,
+    session=Depends(get_session),
 ):
     await log_request(request)
     return response_model(
-        message=Device.update(mac_address, **deviceUpdateModel.model_dump())
+        message=Device.update(session, mac_address, **deviceUpdateModel.model_dump())
     )
 
 
@@ -129,9 +140,13 @@ async def update_device(
     tags=["Device"],
     dependencies=[Depends(PermissionChecker("delete_device"))],
 )
-async def delete_device(deviceDeleteModel: DeleteModel, request: Request):
+async def delete_device(
+    deviceDeleteModel: DeleteModel,
+    request: Request,
+    session=Depends(get_session),
+):
     await log_request(request)
-    return response_model(message=Device.delete(deviceDeleteModel.identifier))
+    return response_model(message=Device.delete(session, deviceDeleteModel.identifier))
 
 
 @router.post(
@@ -143,12 +158,13 @@ async def request_device(
     deviceRequestModel: DeviceRequestModel,
     request: Request,
     token=Depends(auth.validate_token),
+    session=Depends(get_session),
 ):
     await log_request(request)
     email = token.get("user_identifier")
     return response_model(
         message=DeviceRequestRecord.allot_to_user(
-            user_email=email, mac_address=deviceRequestModel.mac_address
+            session, user_email=email, mac_address=deviceRequestModel.mac_address
         )
     )
 
@@ -162,12 +178,13 @@ async def return_device(
     deviceReturnModel: DeviceRequestModel,
     request: Request,
     token=Depends(auth.validate_token),
+    session=Depends(get_session),
 ):
     await log_request(request)
     email = token.get("user_identifier")
     return response_model(
         message=DeviceRequestRecord.return_device(
-            user_email=email, mac_address=deviceReturnModel.mac_address
+            session, user_email=email, mac_address=deviceReturnModel.mac_address
         )
     )
 
@@ -182,9 +199,11 @@ async def request_maintenance(
     mac_address: str,
     deviceMaintenanceModel: DeviceMaintenanceModel,
     token=Depends(auth.validate_token),
+    session=Depends(get_session),
 ):
     return response_model(
         message=MaintenanceHistory.add(
+            session,
             mac_address=mac_address,
             email=token.get("user_identifier"),
             **deviceMaintenanceModel.model_dump(),
@@ -198,11 +217,13 @@ async def request_maintenance(
     dependencies=[Depends(PermissionChecker("request_device"))],
 )
 async def return_maintenance(
-    mac_address: str, deviceReturn: DeviceReturnFromMaintenanceModel
+    mac_address: str,
+    deviceReturn: DeviceReturnFromMaintenanceModel,
+    session=Depends(get_session),
 ):
     return response_model(
         message=MaintenanceHistory.update(
-            mac_address=mac_address, **deviceReturn.model_dump()
+            session, mac_address=mac_address, **deviceReturn.model_dump()
         )
     )
 
@@ -212,10 +233,10 @@ async def return_maintenance(
     tags=["Device"],
     dependencies=[Depends(PermissionChecker("view_device"))],
 )
-def device_maintenance_history(mac_address: str):
-    device_object = Device.from_mac_address(mac_address)
+def device_maintenance_history(mac_address: str, session):
+    device_object = Device.from_mac_address(session, mac_address)
     device_id = device_object.id
-    result = MaintenanceHistory.device_maintenance_history(device_id)
+    result = MaintenanceHistory.device_maintenance_history(session, device_id)
     return response_model(message="Successful", data=result)
 
 
@@ -224,8 +245,11 @@ def device_maintenance_history(mac_address: str):
     tags=["Device"],
     dependencies=[Depends(PermissionChecker("view_device"))],
 )
-def device_owner_history(mac_address: str):
-    device_object = Device.from_mac_address(mac_address)
+def device_owner_history(
+    mac_address: str,
+    session=Depends(get_session),
+):
+    device_object = Device.from_mac_address(session, mac_address)
     device_id = device_object.id
-    result = DeviceRequestRecord.device_owner_history(device_id)
+    result = DeviceRequestRecord.device_owner_history(session, device_id)
     return response_model(message="Successful", data=result)
