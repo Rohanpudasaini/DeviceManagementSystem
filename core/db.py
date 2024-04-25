@@ -22,8 +22,10 @@ def get_session():
     finally:
         session.close()
 
+
 class Base(DeclarativeBase):
     pass
+
 
 # Base.metadata.create_all(engine)
 def handle_db_transaction(session: Session):
@@ -36,18 +38,16 @@ def handle_db_transaction(session: Session):
         raise HTTPException(
             status_code=409,
             detail=response_model(
-                    message=constants.INTEGRITY_ERROR,
-                    error =constants.INTEGRITY_ERROR_MESSAGE,
-            )
+                message=constants.INTEGRITY_ERROR,
+                error=constants.INTEGRITY_ERROR_MESSAGE,
+            ),
         )
     except Exception as e:
         logger.error(print(e))
         session.rollback()
         raise HTTPException(
-            status_code= 500,
-            detail= response_model(
-                message= constants.INTERNAL_ERROR,
-                error= constants.internal_error(str(e))
-            )
+            status_code=500,
+            detail=response_model(
+                message=constants.INTERNAL_ERROR, error=constants.internal_error(str(e))
+            ),
         )
-    

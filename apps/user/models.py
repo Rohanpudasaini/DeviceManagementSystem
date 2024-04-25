@@ -48,7 +48,6 @@ class User(Base):
 
     @classmethod
     def add(cls, session, **kwargs):
-        # session = get_session()
         password = generate_password(12)
         kwargs["password"] = auth.hash_password(password)
         role_to_add = kwargs.get("role")
@@ -91,8 +90,6 @@ class User(Base):
         handle_db_transaction(session)
         logger.info("Password Changed Successfully")
         return "Password Changed Successfully, Enjoy your account"
-
-
 
     @classmethod
     def reset_password(cls, email, new_password):
@@ -152,7 +149,7 @@ class User(Base):
         return devices
 
     @classmethod
-    def delete(cls,session, user_to_delete):
+    def delete(cls, session, user_to_delete):
         user_to_delete.deleted = True
         user_to_delete.deleted_at = datetime.datetime.now(tz=datetime.UTC)
         session.add(user_to_delete)
@@ -161,7 +158,7 @@ class User(Base):
         return "Deleted Successfully"
 
     @classmethod
-    def get_all(cls, session,page_number, page_size):
+    def get_all(cls, session, page_number, page_size):
         statement = (
             Select(cls)
             .where(cls.deleted == False)  # noqa: E712
@@ -174,7 +171,7 @@ class User(Base):
         return session.scalars(statement).all(), count
 
     @classmethod
-    def from_id(cls,session, id):
+    def from_id(cls, session, id):
         result = session.scalar(Select(cls).where(cls.id == id, cls.deleted == False))  # noqa: E712
         if not result:
             raise HTTPException(
@@ -246,9 +243,10 @@ class User(Base):
                 raise HTTPException(
                     status_code=401,
                     detail=response_model(
-                        message="Unauthorized", error="The temp password is already expired, please request for another one. !"
+                        message="Unauthorized",
+                        error="The temp password is already expired, please request for another one. !",
                     ),
-        )
+                )
         raise HTTPException(
             status_code=401,
             detail=response_model(
