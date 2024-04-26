@@ -169,6 +169,11 @@ class DeviceRequestRecord(Base):
         return session.scalars(
             Select(cls).where(cls.device_id == device_id).order_by(cls.id.desc())
         ).all()
+        
+    
+    @classmethod
+    def get_pending(cls, session):
+        return session.scalars(Select(cls).where(cls.request_status==RequestStatus.pending)).all()
 
 
 class Device(Base):
