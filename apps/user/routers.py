@@ -184,7 +184,7 @@ async def current_device(
     tags=["User"],
     dependencies=[Depends(PermissionChecker("all_access"))],
 )
-async def current_devices_user_id(id: int, session=Depends(get_session)):
+async def current_device_by_user_id(id: int, session=Depends(get_session)):
     user = User.from_id(session, id)
     current_devices = user.devices
     if not current_devices:
