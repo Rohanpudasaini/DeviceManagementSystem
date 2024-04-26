@@ -131,6 +131,7 @@ class User(Base):
         statement = (
             Select(cls)
             .where(cls.deleted == False)  # noqa: E712
+            .order_by(cls.id.asc())
             .offset(((page_number - 1) * page_size))
             .limit(page_size)
         )

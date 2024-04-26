@@ -79,7 +79,9 @@ class MaintenanceHistory(Base):
 
     @classmethod
     def device_maintenance_history(cls, session, device_id):
-        return session.scalars(Select(cls).where(cls.device_id == device_id)).all()
+        return session.scalars(
+            Select(cls).where(cls.device_id == device_id).order_by(cls.id.desc())
+        ).all()
 
 
 class DeviceRequestRecord(Base):
@@ -164,7 +166,9 @@ class DeviceRequestRecord(Base):
 
     @classmethod
     def device_owner_history(cls, session, device_id):
-        return session.scalars(Select(cls).where(cls.device_id == device_id)).all()
+        return session.scalars(
+            Select(cls).where(cls.device_id == device_id).order_by(cls.id.desc())
+        ).all()
 
 
 class Device(Base):
@@ -239,7 +243,9 @@ class Device(Base):
     @classmethod
     def from_category(cls, session, category_name):
         result = session.scalars(
-            Select(cls).where(cls.deleted == False, cls.type == category_name.upper())  # noqa: E712
+            Select(cls)
+            .where(cls.deleted == False, cls.type == category_name.upper())  # noqa: E712
+            .order_by(cls.id.asc())
         ).all()
         if not result:
             raise HTTPException(
@@ -274,6 +280,7 @@ class Device(Base):
         statement = (
             Select(cls)
             .where(cls.available == True, cls.deleted == False)  # noqa: E712
+            .order_by(cls.id.asc())
             .offset(((page_number - 1) * page_size))
             .limit(page_size)
         )
