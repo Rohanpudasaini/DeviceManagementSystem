@@ -140,11 +140,11 @@ def get_reset_link_text(username: str, password: str):
     return f"""
 Subject: Password Reset Instructions
 
-Hello {{username}},
+Hello {username},
 
 You recently requested to reset your password for your account. Below is the one-time password (OTP) you need to proceed with resetting your password. This OTP is valid for only 5 days:
 
-OTP: {{password}}
+OTP: {password}
 
 Please enter this OTP on the password reset page to create a new password. If you did not request a password reset, please ignore this email or contact our support if you believe this is an unauthorized attempt to access your account.
 
