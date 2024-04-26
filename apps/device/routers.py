@@ -140,7 +140,7 @@ async def add_device(
         )
     raise HTTPException(
         status_code=409,
-        details=response_model(
+        detail=response_model(
             message="Duplicate Value", error="Mac address already exist"
         ),
     )

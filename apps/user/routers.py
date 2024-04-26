@@ -98,7 +98,7 @@ async def add_user(
         return response
     raise HTTPException(
         status_code=409,
-        details=response_model(message="Duplicate Value", error="Email already exist"),
+        detail=response_model(message="Duplicate Value", error="Email already exist"),
     )
 
 

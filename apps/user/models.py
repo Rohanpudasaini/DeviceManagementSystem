@@ -52,35 +52,27 @@ class User(Base):
         kwargs["password"] = auth.hash_password(password)
         role_to_add = kwargs.get("role")
         kwargs.pop("role")
-        user_exist = session.scalar(Select(cls).where(cls.email == kwargs["email"]))
-        if not user_exist:
-            user_to_add = cls(**kwargs)
-            if role_to_add:
-                role = Role.from_name(session, role_to_add)
-                if role:
-                    user_to_add.role_id = [role]
-                else:
-                    role = Role.from_name(session, "viewer")
-                    user_to_add.role_id = [role]
-            session.add(user_to_add)
-            handle_db_transaction(session)
-            logger.info(
-                msg=f"User with username {user_to_add.full_name} Added Successfully"
-            )
-            return (
-                password,
-                user_to_add.full_name,
-                response_model(
-                    message="User added successfully, Please find your temporary password in mail"
-                ),
-            )
-        raise HTTPException(
-            status_code=409,
-            detail=response_model(
-                message=constants.INTEGRITY_ERROR,
-                error=constants.INTEGRITY_ERROR_MESSAGE,
+        user_to_add = cls(**kwargs)
+        if role_to_add:
+            role = Role.from_name(session, role_to_add)
+            if role:
+                user_to_add.role_id = [role]
+            else:
+                role = Role.from_name(session, "viewer")
+                user_to_add.role_id = [role]
+        session.add(user_to_add)
+        handle_db_transaction(session)
+        logger.info(
+            msg=f"User with username {user_to_add.full_name} Added Successfully"
+        )
+        return (
+            password,
+            user_to_add.full_name,
+            response_model(
+                message="User added successfully, Please find your temporary password in mail"
             ),
         )
+
 
     @classmethod
     def change_password(cls, session, user_to_update, new_password):
