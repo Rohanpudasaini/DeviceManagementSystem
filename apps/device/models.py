@@ -169,11 +169,24 @@ class DeviceRequestRecord(Base):
         return session.scalars(
             Select(cls).where(cls.device_id == device_id).order_by(cls.id.desc())
         ).all()
-        
-    
+
     @classmethod
-    def get_pending(cls, session):
-        return session.scalars(Select(cls).where(cls.request_status==RequestStatus.pending)).all()
+    def return_pending(cls, session):
+        basic_data= session.scalars(
+            Select(cls).where(cls.request_status == RequestStatus.pending)
+        ).all()
+        results = []
+        for data in basic_data:
+            result = {
+                "borrowed_date":data.borrowed_date,
+                "expected_return_date": data.expected_return_date,
+                "full_name": data.user.full_name,
+                "designation": data.user.designation,
+                "device_name": data.device.name,
+                "category": data.device.type
+            }
+            results.append(result)
+        return results
 
 
 class Device(Base):

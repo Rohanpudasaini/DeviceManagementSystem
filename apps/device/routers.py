@@ -300,7 +300,7 @@ async def return_maintenance(
             ,dependencies=[Depends(PermissionChecker("all_access"))]
             )
 async def pending_request(session= Depends(get_session)):
-    return response_model(data = DeviceRequestRecord.get_pending(session))
+    return response_model(data = DeviceRequestRecord.return_pending(session))
 
 
 @router.get(
