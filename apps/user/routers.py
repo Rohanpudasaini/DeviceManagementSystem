@@ -86,7 +86,7 @@ async def add_user(
     session=Depends(get_session),
 ):
     await log_request(request)
-    email_exist = User.from_email(session,userAddModel.email, check=True)
+    email_exist = User.from_email(session, userAddModel.email, check=True)
     if not email_exist:
         password, username, response = User.add(session, **userAddModel.model_dump())
         backgroundTasks.add_task(
@@ -98,9 +98,7 @@ async def add_user(
         return response
     raise HTTPException(
         status_code=409,
-        details=response_model(
-            message="Duplicate Value", error="Email already exist"
-        ),
+        details=response_model(message="Duplicate Value", error="Email already exist"),
     )
 
 

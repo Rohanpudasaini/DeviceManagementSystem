@@ -200,6 +200,12 @@ class Device(Base):
         return "Device Added Successfully"
 
     @classmethod
+    def allocated_device(cls, session):
+        allocated_device = session.scalars(Select(cls).where(cls.user_id != None)).all()  # noqa: E712
+        if allocated_device:
+            return allocated_device
+
+    @classmethod
     def update(cls, session, device_to_update, **kwargs):
         for key, value in kwargs.items():
             if value:
