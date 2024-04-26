@@ -59,8 +59,7 @@ class MaintenanceHistory(Base):
         )
         if record_to_update:
             for key, values in kwargs.items():
-                if values is not None:
-                    setattr(record_to_update, key, values)
+                setattr(record_to_update, key, values)
             # returned_device = Device.from_id(device_id)
             user_object = User.from_id(session, record_to_update.user_id)
             returned_device.user = user_object
@@ -230,8 +229,7 @@ class Device(Base):
     @classmethod
     def update(cls, session, device_to_update, **kwargs):
         for key, value in kwargs.items():
-            if value:
-                setattr(device_to_update, key, value)
+            setattr(device_to_update, key, value)
         session.add(device_to_update)
         handle_db_transaction(session)
         logger.info(

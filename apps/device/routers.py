@@ -136,7 +136,7 @@ async def add_device(
     mac_exist = Device.from_mac_address(session, deviceAddModel.mac_address, check=True)
     if not mac_exist:
         return response_model(
-            message=Device.add(session, **deviceAddModel.model_dump())
+            message=Device.add(session, **deviceAddModel.model_dump(exclude_unset=True))
         )
     raise HTTPException(
         status_code=409,
@@ -161,7 +161,7 @@ async def update_device(
     device_to_update = Device.from_mac_address(session, mac_address)
     return response_model(
         message=Device.update(
-            session, device_to_update, **deviceUpdateModel.model_dump()
+            session, device_to_update, **deviceUpdateModel.model_dump(exclude_unset=True)
         )
     )
 
@@ -274,7 +274,7 @@ async def request_maintenance(
             session,
             device_to_repair=device_to_repair,
             user=user,
-            **deviceMaintenanceModel.model_dump(),
+            **deviceMaintenanceModel.model_dump(exclude_unset=True),
         )
     )
 
@@ -292,7 +292,7 @@ async def return_maintenance(
     returned_device = Device.from_mac_address(session, mac_address)
     return response_model(
         message=MaintenanceHistory.update(
-            session, returned_device=returned_device, **deviceReturn.model_dump()
+            session, returned_device=returned_device, **deviceReturn.model_dump(exclude_unset=True)
         )
     )
 

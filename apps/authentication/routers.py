@@ -31,7 +31,7 @@ async def login(
     session=Depends(get_session),
 ):
     user_object = User.from_email(session, loginModel.email)
-    return User.login(session, user_object, **loginModel.model_dump())
+    return User.login(session, user_object, **loginModel.model_dump(exclude_unset=True))
 
 
 @router.post("/login/refresh-token", tags=["Authentication"], status_code=201)

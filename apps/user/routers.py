@@ -88,7 +88,7 @@ async def add_user(
     await log_request(request)
     email_exist = User.from_email(session, userAddModel.email, check=True)
     if not email_exist:
-        password, username, response = User.add(session, **userAddModel.model_dump())
+        password, username, response = User.add(session, **userAddModel.model_dump(exclude_unset=True))
         backgroundTasks.add_task(
             send_mail.welcome_mail,
             email_to_send_to=userAddModel.email,
@@ -116,7 +116,7 @@ async def update_user(
     await log_request(request)
     user_to_update = User.from_email(session, email)
     return response_model(
-        message=User.update(user_to_update, session, **userUpdateModel.model_dump())
+        message=User.update(user_to_update, session, **userUpdateModel.model_dump(exclude_unset=True))
     )
 
 

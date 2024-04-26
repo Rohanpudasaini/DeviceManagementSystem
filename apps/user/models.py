@@ -102,8 +102,7 @@ class User(Base):
             if final_role:
                 user_to_update.role_id = [final_role]
         for key, value in kwargs.items():
-            if value is not None:
-                setattr(user_to_update, key, value)
+            setattr(user_to_update, key, value)
         session.add(user_to_update)
         handle_db_transaction(session)
         logger.info(msg=f"{user_to_update.full_name} updated Successful")
