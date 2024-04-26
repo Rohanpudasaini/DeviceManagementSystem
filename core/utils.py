@@ -21,7 +21,10 @@ def generate_password(length):
     password = ""
     for i in range(length):
         password += "".join(secrets.choice(selection_list))
-    password = password.replace('"', "'")
+    password += "".join(secrets.choice(digits))
+    password += "".join(secrets.choice(string.ascii_lowercase))
+    password += "".join(secrets.choice(special_chars))
+    password += "".join(secrets.choice(string.ascii_uppercase))
     return password
 
 
