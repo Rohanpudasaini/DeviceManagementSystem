@@ -204,8 +204,8 @@ class Device(Base):
         return "Device Added Successfully"
 
     @classmethod
-    def aasigned_device(cls, session):
-        assigned_device = session.scalars(Select(cls).where(cls.user_id != None)).all()  # noqa: E712
+    def assigned_device(cls, session):
+        assigned_device = session.scalars(Select(cls).where(cls.user_id != None)).all()  # noqa: E711
         if assigned_device:
             return assigned_device
 

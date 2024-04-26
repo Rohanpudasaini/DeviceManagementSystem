@@ -109,7 +109,7 @@ async def get_all_device(
 async def assigned_device(
     session=Depends(get_session),
 ):
-    device = Device.aasigned_device(session)
+    device = Device.assigned_device(session)
     return response_model(data=device)
 
 
