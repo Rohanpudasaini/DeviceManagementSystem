@@ -51,7 +51,7 @@ async def get_new_accessToken(refreshToken: RefreshTokenModel):
 
 
 @router.post("/change-password", tags=["Password"])
-def update_password(
+async def update_password(
     changePasswordModel: ChangePasswordModel,
     token=Depends(auth.validate_token),
     session=Depends(get_session),
@@ -85,7 +85,7 @@ def update_password(
 
 
 @router.post("/reset-password", tags=["Password"])
-def reset_password(
+async def reset_password(
     token=Form(),
     new_password=Form(),
     confirm_password=Form(),

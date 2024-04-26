@@ -308,7 +308,7 @@ async def pending_request(session= Depends(get_session)):
     tags=["Device"],
     dependencies=[Depends(PermissionChecker("view_device"))],
 )
-def device_maintenance_history(mac_address: str, session):
+async def device_maintenance_history(mac_address: str, session):
     device_object = Device.from_mac_address(session, mac_address)
     device_id = device_object.id
     result = MaintenanceHistory.device_maintenance_history(session, device_id)
@@ -320,7 +320,7 @@ def device_maintenance_history(mac_address: str, session):
     tags=["Device"],
     dependencies=[Depends(PermissionChecker("view_device"))],
 )
-def device_owner_history(
+async def device_owner_history(
     mac_address: str,
     session=Depends(get_session),
 ):
