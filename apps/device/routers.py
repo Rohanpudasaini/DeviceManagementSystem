@@ -106,10 +106,10 @@ async def get_all_device(
 
 
 @router.get("/assigned", tags=["Device"])
-async def allocated_device(
+async def assigned_device(
     session=Depends(get_session),
 ):
-    device = Device.allocated_device(session)
+    device = Device.aasigned_device(session)
     return response_model(data=device)
 
 
