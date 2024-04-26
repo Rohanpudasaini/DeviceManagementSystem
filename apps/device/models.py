@@ -2,6 +2,7 @@ from fastapi import HTTPException
 from sqlalchemy import DateTime, ForeignKey, ARRAY, String, Select, func
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 from sqlalchemy.ext.hybrid import hybrid_property
+from apps.device.enum import RequestStatus
 from apps.user.models import User
 from core.utils import response_model
 from apps.device.schemas import DeviceStatus, DeviceType, Purpose
@@ -91,6 +92,7 @@ class DeviceRequestRecord(Base):
     expected_return_date = mapped_column(DateTime)
     device_id: Mapped[int] = mapped_column(ForeignKey("device.id"), nullable=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=True)
+    request_status: Mapped[RequestStatus] = mapped_column(server_default="pending")
     device = relationship("Device", backref="record", foreign_keys=[device_id])
     user = relationship("User", backref="record", foreign_keys=[user_id])
 

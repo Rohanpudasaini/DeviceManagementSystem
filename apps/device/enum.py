@@ -18,3 +18,7 @@ class DeviceStatus(Enum):
     INACTIVE = "inactive"
 
 
+class RequestStatus(Enum):
+    pending = "pending"
+    accepted = "accepted"
+    rejected = "rejected"
