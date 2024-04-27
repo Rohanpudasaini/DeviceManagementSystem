@@ -62,7 +62,7 @@ This is a robust device management system API crafted using FastAPI for handling
 
 ## API Documentation
 
-   Visit `localhost/api/v1/docs` to access the Swagger UI, where you can view the API documentation and test the endpoints directly from your browser.
+   Visit `localhost/api/v1/docs` or `localhost/docs` to access the Swagger UI, where you can view the API documentation and test the endpoints directly from your browser.
 
 ## Authentication and Authorization
 
