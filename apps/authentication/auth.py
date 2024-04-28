@@ -25,7 +25,7 @@ def generate_JWT(
     return encoded_access, encoded_refresh
 
 
-def decodeAccessJWT(token: str):
+def decode_access_JWT(token: str):
     try:
         decode_token = jwt.decode(token, config.secret_access, config.algorithm)
         # return decode_token if decode_token['expiry'] >= time.time() else None
@@ -49,7 +49,7 @@ def decodeAccessJWT(token: str):
         )
 
 
-def decodeRefreshJWT(token: str):
+def decode_refresh_JWT(token: str):
     try:
         decode_token = jwt.decode(token, config.secret_refresh, config.algorithm)
         # return decode_token if decode_token['expiry'] >= time.time() else None
@@ -126,7 +126,7 @@ def validate_token(
     token: Annotated[HTTPAuthorizationCredentials, Depends(contain_header)]
 ):
     if token:
-        return decodeAccessJWT(token.credentials)
+        return decode_access_JWT(token.credentials)
     raise HTTPException(
         status_code=401,
         detail=response_model(

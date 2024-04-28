@@ -36,18 +36,14 @@ async def login(
 
 @router.post("/login/refresh-token", tags=["Authentication"], status_code=201)
 async def get_new_accessToken(refreshToken: RefreshTokenModel):
-    token = auth.decodeRefreshJWT(refreshToken.token)
+    token = auth.decode_refresh_JWT(refreshToken.token)
     if token:
         return response_model(data={"access_token": token})
     raise HTTPException(
         status_code=401,
-        detail={
-            "Error": {
-                "error_type": constants.TOKEN_ERROR,
-                "error_message": constants.TOKEN_VERIFICATION_FAILED,
-            }
-        },
-    )
+        detail=response_model(message = constants.TOKEN_ERROR,
+                error = constants.TOKEN_VERIFICATION_FAILED
+    ))
 
 
 @router.post("/change-password", tags=["Password"])
