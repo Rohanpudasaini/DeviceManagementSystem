@@ -22,6 +22,7 @@ DELETED_ERROR_MESSAGE = "The Object you have requested for is deleted, please se
 EXPIRED_TOKEN = "Expired token"
 SAME_PASSWORD = "Same Password"
 CONFLICT = "Conflict"
+DEVICE_ALREADY_IN_USED = "The user have some devices assigned to them, can't delete the user"
 SAME_PASSWORD_MESSAGE = "New password same as old password"
 MAINTENANCE = "Device In Maintenance"
 MAINTENANCE_MESSAGE = "The device you have request for is in maintenance"
@@ -51,3 +52,6 @@ def bad_request(name: str, distinguisher: str, already_issued: bool = False):
 
 def insufficient_resources(name: str):
     return f"The requested {name} is currently assigned to some other user, please check again after some days."
+
+def no_device_associated(name:str):
+    return f"No device is associated with the {name}"
