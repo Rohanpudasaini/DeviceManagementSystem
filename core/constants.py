@@ -37,7 +37,7 @@ def request_not_found(name: str, distinguisher: str):
 
 def bad_request(name: str, distinguisher: str, already_issued: bool = False):
     if not already_issued:
-        return f"{name} with that {distinguisher} already exsist"
+        return f"{name} with that {distinguisher} already exist"
     return f"You have already issued this {name}"
 
 
