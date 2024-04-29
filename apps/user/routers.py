@@ -138,8 +138,8 @@ async def delete_user(
         raise HTTPException(
             status_code=409,
             detail=response_model(
-                message="Conflict",
-                error="The user have some devices assigned to them, can't delete the user",
+                message=constants.CONFLICT,
+                error= constants.DEVICE_ALREADY_IN_USED,
             ),
         )
     return response_model(message=User.delete(session, user_to_delete))
@@ -196,7 +196,7 @@ async def current_device_by_user_id(id: int, session=Depends(get_session)):
             status_code=404,
             detail=response_model(
                 message=constants.REQUEST_NOT_FOUND,
-                error=f"No device is associated with the {user.full_name}",
+                error= constants.no_device_associated(user.full_name),
             ),
         )
     return response_model(data={'result':current_devices})

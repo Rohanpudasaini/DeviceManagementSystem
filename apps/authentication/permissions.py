@@ -21,7 +21,7 @@ class PermissionChecker:
                 status_code=403,
                 detail=response_model(
                     message=constants.FORBIDDEN,
-                    error="Not enough permissions to access this resource",
+                    error=constants.FORBIDDEN_MESSAGE,
                 ),
             )
         return user

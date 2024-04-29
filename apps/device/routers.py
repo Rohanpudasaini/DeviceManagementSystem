@@ -334,8 +334,8 @@ async def request_maintenance(
         raise HTTPException(
             status_code=409,
             detail=response_model(
-                message="Device In Maintenance",
-                error="The device you have request for is in maintenance",
+                message=constants.MAINTENANCE,
+                error= constants.MAINTENANCE_MESSAGE,
             ),
         )
     return response_model(

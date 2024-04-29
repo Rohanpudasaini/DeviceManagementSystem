@@ -206,8 +206,8 @@ class User(Base):
                 raise HTTPException(
                     status_code=401,
                     detail=response_model(
-                        message="Unauthorized",
-                        error="The temp password is already expired, please request for another one. !",
+                        message=constants.UNAUTHORIZED,
+                        error= constants.TEMP_PASSWORD_ALREADY_USED,
                     ),
                 )
         raise HTTPException(

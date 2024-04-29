@@ -68,8 +68,8 @@ async def update_password(
         raise HTTPException(
             status_code=409,
             detail=response_model(
-                message="Same Password",
-                error="New password same as old password",
+                message=constants.SAME_PASSWORD,
+                error=constants.SAME_PASSWORD_MESSAGE,
             ),
         )
     return response_model(
@@ -88,7 +88,8 @@ async def reset_password(
         raise HTTPException(
             status_code=400,
             detail=response_model(
-                message="Bad Request", error="The password do not match"
+                message= constants.BAD_REQUEST,
+                error= constants.BAD_REQUEST_MESSAGE
             ),
         )
     email = auth.decode_otp_jwt(token)
