@@ -123,23 +123,23 @@ async def assigned_device(
     dependencies=[Depends(PermissionChecker("create_device"))],
 )
 async def add_device(
-    deviceAddModel: DeviceAddModel,
+    data: DeviceAddModel,
     request: Request,
     session=Depends(get_session),
 ):
     await log_request(request)
-    if deviceAddModel.specification:
-        specifications = deviceAddModel.specification
+    if data.specification:
+        specifications = data.specification
         new_specification = []
         for specification in specifications:
             if specification:
                 new_specification.append(specification)
-        deviceAddModel.specification = new_specification
+        data.specification = new_specification
 
-    mac_exist = Device.from_mac_address(session, deviceAddModel.mac_address, check=True)
+    mac_exist = Device.from_mac_address(session, data.mac_address, check=True)
     if not mac_exist:
         return response_model(
-            message=Device.add(session, **deviceAddModel.model_dump(exclude_unset=True))
+            message=Device.add(session, **data.model_dump(exclude_unset=True))
         )
     raise HTTPException(
         status_code=409,
@@ -155,7 +155,7 @@ async def add_device(
     dependencies=[Depends(PermissionChecker("update_device"))],
 )
 async def update_device(
-    deviceUpdateModel: DeviceUpdateModel,
+    data: DeviceUpdateModel,
     request: Request,
     mac_address: str,
     session=Depends(get_session),
@@ -166,7 +166,7 @@ async def update_device(
         message=Device.update(
             session,
             device_to_update,
-            **deviceUpdateModel.model_dump(exclude_unset=True),
+            **data.model_dump(exclude_unset=True),
         )
     )
 
@@ -177,12 +177,12 @@ async def update_device(
     dependencies=[Depends(PermissionChecker("delete_device"))],
 )
 async def delete_device(
-    deviceDeleteModel: DeleteModel,
+    data: DeleteModel,
     request: Request,
     session=Depends(get_session),
 ):
     await log_request(request)
-    device_to_delete = Device.from_mac_address(session, deviceDeleteModel.identifier)
+    device_to_delete = Device.from_mac_address(session, data.identifier)
     return response_model(message=Device.delete(session, device_to_delete))
 
 
@@ -192,16 +192,16 @@ async def delete_device(
     dependencies=[Depends(PermissionChecker("request_device"))],
 )
 async def request_device(
-    deviceRequestModel: DeviceRequestModel,
+    data: DeviceRequestModel,
     request: Request,
     token=Depends(auth.validate_token),
     session=Depends(get_session),
 ):
     await log_request(request)
     email = token.get("user_identifier")
-    device_to_allot = Device.from_mac_address(session, deviceRequestModel.mac_address)
+    device_to_allot = Device.from_mac_address(session, data.mac_address)
     requested_user = User.from_email(session, email)
-    expected_return_date = deviceRequestModel.return_date
+    expected_return_date = data.return_date
     if expected_return_date < datetime.datetime.now(tz=datetime.UTC):
         logger.error("Expected return date is in past")
         raise HTTPException(
@@ -236,34 +236,58 @@ async def request_device(
             expected_return_date=expected_return_date,
         )
     )
-    
 
-@router.post("/accept-request", tags =["Device"],dependencies=[Depends(PermissionChecker("all_access"))])
-async def accept_request(payload:DeviceRequestResultModel, backgroundtasks:BackgroundTasks, session = Depends(get_session)):
-    result = DeviceRequestRecord.from_id(session,payload.id_of_request)
+
+@router.post(
+    "/accept-request",
+    tags=["Device"],
+    dependencies=[Depends(PermissionChecker("all_access"))],
+)
+async def accept_request(
+    data: DeviceRequestResultModel,
+    backgroundtasks: BackgroundTasks,
+    session=Depends(get_session),
+):
+    result = DeviceRequestRecord.from_id(session, data.id_of_request)
     if not result:
         raise HTTPException(
-            status_code= 404,
-            detail= response_model(
-                message= constants.REQUEST_NOT_FOUND,
-                error = constants.request_not_found("request record", 'id')
-            )
+            status_code=404,
+            detail=response_model(
+                message=constants.REQUEST_NOT_FOUND,
+                error=constants.request_not_found("request record", "id"),
+            ),
         )
-    return response_model(DeviceRequestRecord.accept_request(session=session,request_to_update=result,backgroundtasks=backgroundtasks))
+    return response_model(
+        DeviceRequestRecord.accept_request(
+            session=session, request_to_update=result, backgroundtasks=backgroundtasks
+        )
+    )
 
 
-@router.post("/reject-request", tags =["Device"],dependencies=[Depends(PermissionChecker("all_access"))])
-async def reject_request(payload:DeviceRequestResultModel,backgroundtasks:BackgroundTasks, session = Depends(get_session)):
-    result = DeviceRequestRecord.from_id(session,payload.id_of_request)
+@router.post(
+    "/reject-request",
+    tags=["Device"],
+    dependencies=[Depends(PermissionChecker("all_access"))],
+)
+async def reject_request(
+    data: DeviceRequestResultModel,
+    backgroundtasks: BackgroundTasks,
+    session=Depends(get_session),
+):
+    result = DeviceRequestRecord.from_id(session, data.id_of_request)
     if not result:
         raise HTTPException(
-            status_code= 404,
-            detail= response_model(
-                message= constants.REQUEST_NOT_FOUND,
-                error = constants.request_not_found("request record", 'id')
-            )
+            status_code=404,
+            detail=response_model(
+                message=constants.REQUEST_NOT_FOUND,
+                error=constants.request_not_found("request record", "id"),
+            ),
         )
-    return response_model(DeviceRequestRecord.reject_request(session=session,request_to_update=result, backgroundtasks=backgroundtasks))
+    return response_model(
+        DeviceRequestRecord.reject_request(
+            session=session, request_to_update=result, backgroundtasks=backgroundtasks
+        )
+    )
 
 
 @router.post(
@@ -272,14 +296,14 @@ async def reject_request(payload:DeviceRequestResultModel,backgroundtasks:Backgr
     dependencies=[Depends(PermissionChecker("request_device"))],
 )
 async def return_device(
-    deviceReturnModel: DeviceReturnModel,
+    data: DeviceReturnModel,
     request: Request,
     token=Depends(auth.validate_token),
     session=Depends(get_session),
 ):
     await log_request(request)
     email = token.get("user_identifier")
-    device_to_return = Device.from_mac_address(session, deviceReturnModel.mac_address)
+    device_to_return = Device.from_mac_address(session, data.mac_address)
     returned_user = User.from_email(session, email)
     return response_model(
         message=DeviceRequestRecord.return_device(
@@ -296,7 +320,7 @@ async def return_device(
 )
 async def request_maintenance(
     mac_address: str,
-    deviceMaintenanceModel: DeviceMaintenanceModel,
+    data: DeviceMaintenanceModel,
     token=Depends(auth.validate_token),
     session=Depends(get_session),
 ):
@@ -319,7 +343,7 @@ async def request_maintenance(
             session,
             device_to_repair=device_to_repair,
             user=user,
-            **deviceMaintenanceModel.model_dump(exclude_unset=True),
+            **data.model_dump(exclude_unset=True),
         )
     )
 
@@ -331,7 +355,7 @@ async def request_maintenance(
 )
 async def return_maintenance(
     mac_address: str,
-    deviceReturn: DeviceReturnFromMaintenanceModel,
+    data: DeviceReturnFromMaintenanceModel,
     session=Depends(get_session),
 ):
     returned_device = Device.from_mac_address(session, mac_address)
@@ -339,7 +363,7 @@ async def return_maintenance(
         message=MaintenanceHistory.update(
             session,
             returned_device=returned_device,
-            **deviceReturn.model_dump(exclude_unset=True),
+            **data.model_dump(exclude_unset=True),
         )
     )
 

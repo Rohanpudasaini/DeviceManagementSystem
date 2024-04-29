@@ -27,35 +27,34 @@ router = APIRouter()
 
 @router.post("/login", tags=["Authentication"])
 async def login(
-    loginModel: LoginModel,
+    data: LoginModel,
     session=Depends(get_session),
 ):
-    user_object = User.from_email(session, loginModel.email)
-    return User.login(session, user_object, **loginModel.model_dump(exclude_unset=True))
+    user_object = User.from_email(session, data.email)
+    return User.login(session, user_object, **data.model_dump(exclude_unset=True))
 
 
 @router.post("/login/refresh-token", tags=["Authentication"], status_code=201)
-async def get_new_access_token(refreshToken: RefreshTokenModel):
-    token = auth.decode_refresh_jwt(refreshToken.token)
+async def get_new_access_token(data: RefreshTokenModel):
+    token = auth.decode_refresh_jwt(data.token)
     if token:
         return response_model(data={"access_token": token})
     raise HTTPException(
         status_code=401,
-        detail=response_model(message = constants.TOKEN_ERROR,
-                error = constants.TOKEN_VERIFICATION_FAILED
-    ))
+        detail=response_model(
+            message=constants.TOKEN_ERROR, error=constants.TOKEN_VERIFICATION_FAILED
+        ),
+    )
 
 
 @router.post("/change-password", tags=["Password"])
 async def update_password(
-    changePasswordModel: ChangePasswordModel,
+    data: ChangePasswordModel,
     token=Depends(auth.validate_token),
     session=Depends(get_session),
 ):
     user_to_update = User.from_email(session, token.get("user_identifier"))
-    if not auth.verify_password(
-        changePasswordModel.old_password, user_to_update.password
-    ):
+    if not auth.verify_password(data.old_password, user_to_update.password):
         logger.warning("Password don't match")
         raise HTTPException(
             status_code=409,
@@ -64,7 +63,7 @@ async def update_password(
                 error=constants.UNAUTHORIZED_MESSAGE,
             ),
         )
-    if auth.verify_password(changePasswordModel.new_password, user_to_update.password):
+    if auth.verify_password(data.new_password, user_to_update.password):
         logger.warning("Same password as old password")
         raise HTTPException(
             status_code=409,
@@ -74,9 +73,7 @@ async def update_password(
             ),
         )
     return response_model(
-        message=User.change_password(
-            session, user_to_update, changePasswordModel.new_password
-        )
+        message=User.change_password(session, user_to_update, data.new_password)
     )
 
 
@@ -104,11 +101,11 @@ async def reset_password(
 
 @router.post("/forget-password", tags=["Password"])
 async def forget_password(
-    resetPassword: ResetPasswordModel,
+    data: ResetPasswordModel,
     backgroundTasks: BackgroundTasks,
     session=Depends(get_session),
 ):
-    user_object = User.from_email(session, resetPassword.email)
+    user_object = User.from_email(session, data.email)
     if not user_object:
         raise HTTPException(
             status_code=404,
@@ -120,7 +117,7 @@ async def forget_password(
     password = generate_password(12)
     backgroundTasks.add_task(
         send_mail.reset_mail,
-        email_to_send_to=resetPassword.email,
+        email_to_send_to=data.email,
         username=user_object.full_name,
         password=password,
     )

@@ -80,18 +80,20 @@ async def get_all_users(
     dependencies=[Depends(PermissionChecker("create_user"))],
 )
 async def add_user(
-    userAddModel: UserAddModel,
+    data: UserAddModel,
     request: Request,
     backgroundTasks: BackgroundTasks,
     session=Depends(get_session),
 ):
     await log_request(request)
-    email_exist = User.from_email(session, userAddModel.email, check=True)
+    email_exist = User.from_email(session, data.email, check=True)
     if not email_exist:
-        password, username, response = User.add(session, **userAddModel.model_dump(exclude_unset=True))
+        password, username, response = User.add(
+            session, **data.model_dump(exclude_unset=True)
+        )
         backgroundTasks.add_task(
             send_mail.welcome_mail,
-            email_to_send_to=userAddModel.email,
+            email_to_send_to=data.email,
             username=username,
             password=password,
         )
@@ -108,7 +110,7 @@ async def add_user(
     dependencies=[Depends(PermissionChecker("update_user"))],
 )
 async def update_user(
-    userUpdateModel: UserUpdateModel,
+    data: UserUpdateModel,
     request: Request,
     email: EmailStr,
     session=Depends(get_session),
@@ -116,7 +118,9 @@ async def update_user(
     await log_request(request)
     user_to_update = User.from_email(session, email)
     return response_model(
-        message=User.update(user_to_update, session, **userUpdateModel.model_dump(exclude_unset=True))
+        message=User.update(
+            user_to_update, session, **data.model_dump(exclude_unset=True)
+        )
     )
 
 
@@ -124,12 +128,12 @@ async def update_user(
     "/user", tags=["User"], dependencies=[Depends(PermissionChecker("delete_user"))]
 )
 async def delete_user(
-    userDeleteModel: DeleteModel,
+    data: DeleteModel,
     request: Request,
     session=Depends(get_session),
 ):
     await log_request(request)
-    user_to_delete = User.from_email(session, userDeleteModel.identifier)
+    user_to_delete = User.from_email(session, data.identifier)
     if user_to_delete.devices:
         raise HTTPException(
             status_code=409,
