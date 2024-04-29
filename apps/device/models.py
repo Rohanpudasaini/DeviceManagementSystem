@@ -126,8 +126,10 @@ class DeviceRequestRecord(Base):
         logger.info(
             f"Successfully requested device with id {device_id} to user with email {requested_user.email}"
         )
-        return "successfully requested device, please wait while admin check your request. \
+        return (
+            "successfully requested device, please wait while admin check your request. \
 You will be informed through mail about the result."
+        )
 
     @classmethod
     def return_device(cls, session, returned_user, device_to_return):
@@ -172,10 +174,19 @@ You will be informed through mail about the result."
         ).all()
 
     @classmethod
-    def pending_requests(cls, session):
+    def pending_requests(cls, session, page_number, page_size):
         basic_data = session.scalars(
-            Select(cls).where(cls.request_status == RequestStatus.pending)
-        ).all()
+            Select(cls)
+            .where(cls.request_status == RequestStatus.pending)
+            .order_by(cls.id.asc())
+            .offset(((page_number - 1) * page_size))
+            .limit(page_size)
+        )
+        count = session.scalar(
+            Select(func.count())
+            .select_from(cls)
+            .where(cls.request_status == RequestStatus.pending)
+        )
         results = []
         for data in basic_data:
             result = {
@@ -188,10 +199,11 @@ You will be informed through mail about the result."
                 "category": data.device.type,
             }
             results.append(result)
-        return results
+            # /return the result and the count
+        return results, count
 
     @classmethod
-    def accept_request(cls,session, id):
+    def accept_request(cls, session, id):
         # request_to_accept = session.sc
         ...
 

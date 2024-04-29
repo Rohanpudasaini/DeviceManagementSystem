@@ -317,8 +317,44 @@ async def return_maintenance(
 @router.get(
     "/pending", tags=["Device"], dependencies=[Depends(PermissionChecker("all_access"))]
 )
-async def pending_request(session=Depends(get_session)):
-    return response_model(data=DeviceRequestRecord.pending_requests(session))
+async def pending_request(
+    session=Depends(get_session),
+    page_number: int | None = 1,
+    page_size: int | None = 20,
+):
+    if page_number < 1:
+        page_number = 1
+
+    result, count = DeviceRequestRecord.pending_requests(
+        session=session, page_number=page_number, page_size=page_size
+    )
+    final_page = ceil(count / page_size)
+    next_page, previous_page = None, None
+
+    if page_size * page_number < count:
+        next_page = f"/api/v1/pending?page_number={page_number+1}&page_size={page_size}"
+    if page_number > 1:
+        if page_number > final_page:
+            previous_page = (
+                f"/api/v1/pending?page_number={final_page}&page_size={page_size}"
+            )
+        else:
+            previous_page = (
+                f"/api/v1/pending?page_number={page_number-1}&page_size={page_size}"
+            )
+    return response_model(
+        data={
+            "pagination": {
+                "total": count,
+                "page_number": page_number,
+                "page_Size": page_size,
+                "next_page": next_page,
+                "previous_page": previous_page,
+                "final_page": final_page,
+            },
+            "result": result,
+        }
+    )
 
 
 @router.get(
