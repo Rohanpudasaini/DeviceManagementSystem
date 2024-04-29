@@ -159,9 +159,9 @@ async def user_records(
     user_id = user_object.id
     return response_model(
         message="Successful",
-        data=session.scalars(
+        data={"result":session.scalars(
             Select(DeviceRequestRecord).where(DeviceRequestRecord.user_id == user_id)
-        ).all(),
+        ).all()},
         # message="Successful", data=DeviceRequestRecord.user_record(session,user_id)
     )
 
@@ -180,7 +180,7 @@ async def current_device(
                 error=f"No device is associated with the {user.full_name}",
             ),
         )
-    return response_model(data=current_device)
+    return response_model(data={'result':current_device})
 
 
 @router.get(
@@ -199,4 +199,4 @@ async def current_device_by_user_id(id: int, session=Depends(get_session)):
                 error=f"No device is associated with the {user.full_name}",
             ),
         )
-    return response_model(data=current_devices)
+    return response_model(data={'result':current_devices})

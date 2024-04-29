@@ -220,7 +220,7 @@ You will be informed through mail about the result."
         ).all()
         if same_devices_requested:
             for remaining_request in same_devices_requested:
-                cls.reject_request(session, remaining_request)
+                cls.reject_request(session, remaining_request, backgroundtasks)
         backgroundtasks.add_task(
             send_mail.confirmation_mail,
             email_to_send_to = request_to_update.user.email,
