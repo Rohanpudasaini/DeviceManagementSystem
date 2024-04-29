@@ -174,10 +174,19 @@ You will be informed through mail about the result."
         ).all()
 
     @classmethod
-    def pending_requests(cls, session):
+    def pending_requests(cls, session, page_number, page_size):
         basic_data = session.scalars(
-            Select(cls).where(cls.request_status == RequestStatus.pending)
-        ).all()
+            Select(cls)
+            .where(cls.request_status == RequestStatus.pending)
+            .order_by(cls.id.asc())
+            .offset(((page_number - 1) * page_size))
+            .limit(page_size)
+        )
+        count = session.scalar(
+            Select(func.count())
+            .select_from(cls)
+            .where(cls.request_status == RequestStatus.pending)
+        )
         results = []
         for data in basic_data:
             result = {
@@ -190,7 +199,8 @@ You will be informed through mail about the result."
                 "category": data.device.type,
             }
             results.append(result)
-        return results
+            # /return the result and the count
+        return results, count
 
     @classmethod
     def accept_request(cls, session, request_to_update, backgroundtasks:BackgroundTasks):
