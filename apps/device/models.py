@@ -191,7 +191,8 @@ You will be informed through mail about the result."
         return results
 
     @classmethod
-    def accept_request(cls):
+    def accept_request(cls,session, id):
+        # request_to_accept = session.sc
         ...
 
 
