@@ -1,5 +1,6 @@
+import datetime
 from math import ceil
-from fastapi import Depends, HTTPException, Request, APIRouter
+from fastapi import BackgroundTasks, Depends, HTTPException, Request, APIRouter
 from apps.device.enum import DeviceStatus
 from apps.device.models import Device, DeviceRequestRecord, MaintenanceHistory
 from apps.user.models import User
@@ -16,7 +17,9 @@ from apps.device.schemas import (
     DeviceAddModel,
     DeviceMaintenanceModel,
     DeviceRequestModel,
+    DeviceRequestResultModel,
     DeviceReturnFromMaintenanceModel,
+    DeviceReturnModel,
     DeviceType,
     DeviceUpdateModel,
 )
@@ -132,7 +135,7 @@ async def add_device(
             if specification:
                 new_specification.append(specification)
         deviceAddModel.specification = new_specification
-    
+
     mac_exist = Device.from_mac_address(session, deviceAddModel.mac_address, check=True)
     if not mac_exist:
         return response_model(
@@ -161,7 +164,9 @@ async def update_device(
     device_to_update = Device.from_mac_address(session, mac_address)
     return response_model(
         message=Device.update(
-            session, device_to_update, **deviceUpdateModel.model_dump(exclude_unset=True)
+            session,
+            device_to_update,
+            **deviceUpdateModel.model_dump(exclude_unset=True),
         )
     )
 
@@ -196,6 +201,15 @@ async def request_device(
     email = token.get("user_identifier")
     device_to_allot = Device.from_mac_address(session, deviceRequestModel.mac_address)
     requested_user = User.from_email(session, email)
+    expected_return_date = deviceRequestModel.return_date
+    if expected_return_date < datetime.datetime.now(tz=datetime.UTC):
+        logger.error("Expected return date is in past")
+        raise HTTPException(
+            status_code=409,
+            detail=response_model(
+                message="Invalid Date", error="The date format is not valid"
+            ),
+        )
     if not device_to_allot.available:
         logger.error("The device is no longer available")
         raise HTTPException(
@@ -216,9 +230,40 @@ async def request_device(
         )
     return response_model(
         message=DeviceRequestRecord.allot_to_user(
-            session, requested_user=requested_user, device_to_allot=device_to_allot
+            session,
+            requested_user=requested_user,
+            device_to_allot=device_to_allot,
+            expected_return_date=expected_return_date,
         )
     )
+    
+
+@router.post("/accept-request", tags =["Device"],dependencies=[Depends(PermissionChecker("all_access"))])
+async def accept_request(payload:DeviceRequestResultModel, backgroundtasks:BackgroundTasks, session = Depends(get_session)):
+    result = DeviceRequestRecord.from_id(session,payload.id_of_request)
+    if not result:
+        raise HTTPException(
+            status_code= 404,
+            detail= response_model(
+                message= constants.REQUEST_NOT_FOUND,
+                error = constants.request_not_found("request record", 'id')
+            )
+        )
+    return response_model(DeviceRequestRecord.accept_request(session=session,request_to_update=result,backgroundtasks=backgroundtasks))
+
+
+@router.post("/reject-request", tags =["Device"],dependencies=[Depends(PermissionChecker("all_access"))])
+async def reject_request(payload:DeviceRequestResultModel,backgroundtasks:BackgroundTasks, session = Depends(get_session)):
+    result = DeviceRequestRecord.from_id(session,payload.id_of_request)
+    if not result:
+        raise HTTPException(
+            status_code= 404,
+            detail= response_model(
+                message= constants.REQUEST_NOT_FOUND,
+                error = constants.request_not_found("request record", 'id')
+            )
+        )
+    return response_model(DeviceRequestRecord.reject_request(session=session,request_to_update=result, backgroundtasks=backgroundtasks))
 
 
 @router.post(
@@ -227,7 +272,7 @@ async def request_device(
     dependencies=[Depends(PermissionChecker("request_device"))],
 )
 async def return_device(
-    deviceReturnModel: DeviceRequestModel,
+    deviceReturnModel: DeviceReturnModel,
     request: Request,
     token=Depends(auth.validate_token),
     session=Depends(get_session),
@@ -292,15 +337,54 @@ async def return_maintenance(
     returned_device = Device.from_mac_address(session, mac_address)
     return response_model(
         message=MaintenanceHistory.update(
-            session, returned_device=returned_device, **deviceReturn.model_dump(exclude_unset=True)
+            session,
+            returned_device=returned_device,
+            **deviceReturn.model_dump(exclude_unset=True),
         )
     )
 
-@router.get('/pending', tags=["Device"]
-            ,dependencies=[Depends(PermissionChecker("all_access"))]
+
+@router.get(
+    "/pending", tags=["Device"], dependencies=[Depends(PermissionChecker("all_access"))]
+)
+async def pending_request(
+    session=Depends(get_session),
+    page_number: int | None = 1,
+    page_size: int | None = 20,
+):
+    if page_number < 1:
+        page_number = 1
+
+    result, count = DeviceRequestRecord.pending_requests(
+        session=session, page_number=page_number, page_size=page_size
+    )
+    final_page = ceil(count / page_size)
+    next_page, previous_page = None, None
+
+    if page_size * page_number < count:
+        next_page = f"/api/v1/pending?page_number={page_number+1}&page_size={page_size}"
+    if page_number > 1:
+        if page_number > final_page:
+            previous_page = (
+                f"/api/v1/pending?page_number={final_page}&page_size={page_size}"
             )
-async def pending_request(session= Depends(get_session)):
-    return response_model(data = DeviceRequestRecord.return_pending(session))
+        else:
+            previous_page = (
+                f"/api/v1/pending?page_number={page_number-1}&page_size={page_size}"
+            )
+    return response_model(
+        data={
+            "pagination": {
+                "total": count,
+                "page_number": page_number,
+                "page_Size": page_size,
+                "next_page": next_page,
+                "previous_page": previous_page,
+                "final_page": final_page,
+            },
+            "result": result,
+        }
+    )
 
 
 @router.get(

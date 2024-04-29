@@ -19,7 +19,15 @@ class DeviceAddModel(BaseSchema):
 
 class DeviceRequestModel(BaseSchema):
     mac_address: str
+    return_date: datetime.datetime = datetime.datetime.now(
+        tz=datetime.UTC
+    ) + datetime.timedelta(days=30)
 
+class DeviceReturnModel(BaseSchema):
+    mac_address:str
+
+class DeviceRequestResultModel(BaseSchema):
+    id_of_request:int
 
 class DeviceMaintenanceModel(BaseSchema):
     purpose: Purpose
@@ -41,5 +49,3 @@ class DeviceUpdateModel(BaseSchema):
     status: DeviceStatus | None = None
     product_images: list[str] | None = None
     specification: list[str] | None = None
-
-
