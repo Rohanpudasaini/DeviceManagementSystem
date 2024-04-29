@@ -165,7 +165,7 @@ class User(Base):
     def login(cls, session, user_object, **kwargs):
         is_valid = auth.verify_password(kwargs["password"], user_object.password)
         if is_valid:
-            access_token, refresh_token = auth.generate_JWT(email=user_object.email)
+            access_token, refresh_token = auth.generate_jwt(email=user_object.email)
             if not user_object.default_password:
                 role_id = session.scalars(
                     Select(UserRole.role_id).where(UserRole.user_id == user_object.id)
@@ -189,7 +189,7 @@ class User(Base):
             logger.warning("Default password, redirection to change password")
             return response_model(
                 message="Default password used to login, please change password, use the below provided token to reset password at /password/reset",
-                data={"token": auth.generate_otp_JWT(kwargs["email"])},
+                data={"token": auth.generate_otp_jwt(kwargs["email"])},
             )
         logger.error("Invalid Credentials, checking temp password")
         if user_object.temp_password:
@@ -198,7 +198,7 @@ class User(Base):
                 if (
                     user_object.temp_password_created_at + datetime.timedelta(days=5)
                 ).date() > datetime.datetime.now().date():
-                    access_token = auth.generate_otp_JWT(kwargs["email"])
+                    access_token = auth.generate_otp_jwt(kwargs["email"])
                     return response_model(
                         message="Temporary password is used, please use this access token to change password at /reset_password.",
                         data={"token": access_token},

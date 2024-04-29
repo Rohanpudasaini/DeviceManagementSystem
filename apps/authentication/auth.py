@@ -11,7 +11,7 @@ from core.config import config
 
 contain_header = HTTPBearer(auto_error=False)
 
-def generate_JWT(
+def generate_jwt(
     email: str,
 ):
     payload = {
@@ -25,7 +25,7 @@ def generate_JWT(
     return encoded_access, encoded_refresh
 
 
-def decode_access_JWT(token: str):
+def decode_access_jwt(token: str):
     try:
         decode_token = jwt.decode(token, config.secret_access, config.algorithm)
         # return decode_token if decode_token['expiry'] >= time.time() else None
@@ -49,12 +49,12 @@ def decode_access_JWT(token: str):
         )
 
 
-def decode_refresh_JWT(token: str):
+def decode_refresh_jwt(token: str):
     try:
         decode_token = jwt.decode(token, config.secret_refresh, config.algorithm)
         # return decode_token if decode_token['expiry'] >= time.time() else None
         if decode_token["expiry"] >= time.time():
-            new_token, _ = generate_JWT(decode_token["user_identifier"])
+            new_token, _ = generate_jwt(decode_token["user_identifier"])
             return new_token
         else:
             raise HTTPException(
@@ -75,7 +75,7 @@ def decode_refresh_JWT(token: str):
         )
 
 
-def generate_otp_JWT(email: str):
+def generate_otp_jwt(email: str):
     payload = {
         "user_identifier": email,
         # 'expiry': time.time() + 1200
@@ -126,7 +126,7 @@ def validate_token(
     token: Annotated[HTTPAuthorizationCredentials, Depends(contain_header)]
 ):
     if token:
-        return decode_access_JWT(token.credentials)
+        return decode_access_jwt(token.credentials)
     raise HTTPException(
         status_code=401,
         detail=response_model(

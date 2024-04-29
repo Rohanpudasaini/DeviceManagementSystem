@@ -35,8 +35,8 @@ async def login(
 
 
 @router.post("/login/refresh-token", tags=["Authentication"], status_code=201)
-async def get_new_accessToken(refreshToken: RefreshTokenModel):
-    token = auth.decode_refresh_JWT(refreshToken.token)
+async def get_new_access_token(refreshToken: RefreshTokenModel):
+    token = auth.decode_refresh_jwt(refreshToken.token)
     if token:
         return response_model(data={"access_token": token})
     raise HTTPException(
