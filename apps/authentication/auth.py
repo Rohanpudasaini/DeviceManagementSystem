@@ -11,6 +11,7 @@ from core.config import config
 
 contain_header = HTTPBearer(auto_error=False)
 
+
 def generate_jwt(
     email: str,
 ):
