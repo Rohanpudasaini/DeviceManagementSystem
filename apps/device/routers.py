@@ -1,3 +1,4 @@
+import datetime
 from math import ceil
 from fastapi import Depends, HTTPException, Request, APIRouter
 from apps.device.enum import DeviceStatus
@@ -132,7 +133,7 @@ async def add_device(
             if specification:
                 new_specification.append(specification)
         deviceAddModel.specification = new_specification
-    
+
     mac_exist = Device.from_mac_address(session, deviceAddModel.mac_address, check=True)
     if not mac_exist:
         return response_model(
@@ -161,7 +162,9 @@ async def update_device(
     device_to_update = Device.from_mac_address(session, mac_address)
     return response_model(
         message=Device.update(
-            session, device_to_update, **deviceUpdateModel.model_dump(exclude_unset=True)
+            session,
+            device_to_update,
+            **deviceUpdateModel.model_dump(exclude_unset=True),
         )
     )
 
@@ -196,6 +199,15 @@ async def request_device(
     email = token.get("user_identifier")
     device_to_allot = Device.from_mac_address(session, deviceRequestModel.mac_address)
     requested_user = User.from_email(session, email)
+    expected_return_date = deviceRequestModel.return_date
+    if expected_return_date < datetime.datetime.now(tz=datetime.UTC):
+        logger.error("Expected return date is in past")
+        raise HTTPException(
+            status_code=409,
+            detail=response_model(
+                message="Invalid Date", error="The date format is not valid"
+            ),
+        )
     if not device_to_allot.available:
         logger.error("The device is no longer available")
         raise HTTPException(
@@ -216,7 +228,10 @@ async def request_device(
         )
     return response_model(
         message=DeviceRequestRecord.allot_to_user(
-            session, requested_user=requested_user, device_to_allot=device_to_allot
+            session,
+            requested_user=requested_user,
+            device_to_allot=device_to_allot,
+            expected_return_date=expected_return_date,
         )
     )
 
@@ -292,15 +307,18 @@ async def return_maintenance(
     returned_device = Device.from_mac_address(session, mac_address)
     return response_model(
         message=MaintenanceHistory.update(
-            session, returned_device=returned_device, **deviceReturn.model_dump(exclude_unset=True)
+            session,
+            returned_device=returned_device,
+            **deviceReturn.model_dump(exclude_unset=True),
         )
     )
 
-@router.get('/pending', tags=["Device"]
-            ,dependencies=[Depends(PermissionChecker("all_access"))]
-            )
-async def pending_request(session= Depends(get_session)):
-    return response_model(data = DeviceRequestRecord.return_pending(session))
+
+@router.get(
+    "/pending", tags=["Device"], dependencies=[Depends(PermissionChecker("all_access"))]
+)
+async def pending_request(session=Depends(get_session)):
+    return response_model(data=DeviceRequestRecord.pending_requests(session))
 
 
 @router.get(

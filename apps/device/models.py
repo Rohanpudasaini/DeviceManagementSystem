@@ -104,28 +104,30 @@ class DeviceRequestRecord(Base):
         return False
 
     @classmethod
-    def allot_to_user(cls, session, requested_user, device_to_allot):
+    def allot_to_user(
+        cls, session, requested_user, device_to_allot, expected_return_date
+    ):
         device_id = device_to_allot.id
+        # logger.info(f"Trying to allot a device with device id {device_id} to user with email {requested_user.email}")
         logger.info(
-            f"Trying to allot a device with device id {device_id} to user \
-            with email {requested_user.email}"
+            f"{requested_user.full_name} is requesting a device with id {device_id}"
         )
-        device_to_allot.user = requested_user
-        session.add(device_to_allot)
-        handle_db_transaction(session)
-        device_to_allot.available = False
+        # device_to_allot.user = requested_user
+        # session.add(device_to_allot)
+        # handle_db_transaction(session)
+        # device_to_allot.available = False
         add_record = cls(
-            expected_return_date=datetime.datetime.now(tz=datetime.UTC)
-            + datetime.timedelta(days=30),
+            expected_return_date=expected_return_date,
             device=device_to_allot,
             user=requested_user,
         )
         session.add(add_record)
         handle_db_transaction(session)
         logger.info(
-            f"Successfully allot device with id {device_id} to user with email {requested_user.email}"
+            f"Successfully requested device with id {device_id} to user with email {requested_user.email}"
         )
-        return "successfully alloted device"
+        return "successfully requested device, please wait while admin check your request. \
+You will be informed through mail about the result."
 
     @classmethod
     def return_device(cls, session, returned_user, device_to_return):
@@ -135,18 +137,18 @@ class DeviceRequestRecord(Base):
         )
         device_to_return.user = None
         device_to_return.available = True
-        session.add(device_to_return)
-        handle_db_transaction(session)
         record_to_update = session.scalar(
             Select(cls).where(
                 cls.device_id == device_id,
                 cls.user_id == returned_user.id,
+                cls.request_status == RequestStatus.accepted,
                 cls.returned_date == None,  # noqa: E711
             )
         )
         if record_to_update:
             record_to_update.returned_date = datetime.datetime.now(tz=datetime.UTC)
             session.add(record_to_update)
+            session.add(device_to_return)
             handle_db_transaction(session)
             logger.info(f"{returned_user.email} returned device with id {device_id}")
             return "Device Returned Successfully"
@@ -170,22 +172,27 @@ class DeviceRequestRecord(Base):
         ).all()
 
     @classmethod
-    def return_pending(cls, session):
-        basic_data= session.scalars(
+    def pending_requests(cls, session):
+        basic_data = session.scalars(
             Select(cls).where(cls.request_status == RequestStatus.pending)
         ).all()
         results = []
         for data in basic_data:
             result = {
-                "borrowed_date":data.borrowed_date,
+                "id": data.id,
+                "borrowed_date": data.borrowed_date,
                 "expected_return_date": data.expected_return_date,
                 "full_name": data.user.full_name,
                 "designation": data.user.designation,
                 "device_name": data.device.name,
-                "category": data.device.type
+                "category": data.device.type,
             }
             results.append(result)
         return results
+
+    @classmethod
+    def accept_request(cls):
+        ...
 
 
 class Device(Base):
