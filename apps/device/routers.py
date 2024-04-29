@@ -1,6 +1,6 @@
 import datetime
 from math import ceil
-from fastapi import Depends, HTTPException, Request, APIRouter
+from fastapi import BackgroundTasks, Depends, HTTPException, Request, APIRouter
 from apps.device.enum import DeviceStatus
 from apps.device.models import Device, DeviceRequestRecord, MaintenanceHistory
 from apps.user.models import User
@@ -239,7 +239,7 @@ async def request_device(
     
 
 @router.post("/accept-request", tags =["Device"],dependencies=[Depends(PermissionChecker("all_access"))])
-async def accept_request(payload:DeviceRequestResultModel, session = Depends(get_session)):
+async def accept_request(payload:DeviceRequestResultModel, backgroundtasks:BackgroundTasks, session = Depends(get_session)):
     result = DeviceRequestRecord.from_id(session,payload.id_of_request)
     if not result:
         raise HTTPException(
@@ -249,11 +249,11 @@ async def accept_request(payload:DeviceRequestResultModel, session = Depends(get
                 error = constants.request_not_found("request record", 'id')
             )
         )
-    return response_model(DeviceRequestRecord.accept_request(session=session,request_to_update=result))
+    return response_model(DeviceRequestRecord.accept_request(session=session,request_to_update=result,backgroundtasks=backgroundtasks))
 
 
 @router.post("/reject-request", tags =["Device"],dependencies=[Depends(PermissionChecker("all_access"))])
-async def reject_request(payload:DeviceRequestResultModel, session = Depends(get_session)):
+async def reject_request(payload:DeviceRequestResultModel,backgroundtasks:BackgroundTasks, session = Depends(get_session)):
     result = DeviceRequestRecord.from_id(session,payload.id_of_request)
     if not result:
         raise HTTPException(
@@ -263,7 +263,7 @@ async def reject_request(payload:DeviceRequestResultModel, session = Depends(get
                 error = constants.request_not_found("request record", 'id')
             )
         )
-    return response_model(DeviceRequestRecord.reject_request(session=session,request_to_update=result))
+    return response_model(DeviceRequestRecord.reject_request(session=session,request_to_update=result, backgroundtasks=backgroundtasks))
 
 
 @router.post(

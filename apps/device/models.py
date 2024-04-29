@@ -1,4 +1,4 @@
-from fastapi import HTTPException
+from fastapi import BackgroundTasks, HTTPException
 from sqlalchemy import DateTime, ForeignKey, ARRAY, String, Select, func
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -7,10 +7,11 @@ from apps.user.models import User
 from core.utils import response_model
 from apps.device.schemas import DeviceStatus, DeviceType, Purpose
 import datetime
-from core.db import handle_db_transaction, get_session
+from core.db import handle_db_transaction
 from core import constants
 from core.logger import logger
 from core.db import Base
+from core.email import send_mail
 
 
 class MaintenanceHistory(Base):
@@ -192,7 +193,7 @@ You will be informed through mail about the result."
         return results
 
     @classmethod
-    def accept_request(cls, session, request_to_update):
+    def accept_request(cls, session, request_to_update, backgroundtasks:BackgroundTasks):
         device_requested = request_to_update.device
         alloted_to = request_to_update.user
         device_requested.user = alloted_to
@@ -210,14 +211,31 @@ You will be informed through mail about the result."
         if same_devices_requested:
             for remaining_request in same_devices_requested:
                 cls.reject_request(session, remaining_request)
+        backgroundtasks.add_task(
+            send_mail.confirmation_mail,
+            email_to_send_to = request_to_update.user.email,
+            username=request_to_update.user.full_name,
+            device_name=request_to_update.device.name,
+            device_model = request_to_update.device.mac_address,
+            end_date = request_to_update.borrowed_date
+        )
         return "Device Alloted Successfully"
 
     @classmethod
-    def reject_request(cls, session, request_to_update):
+    def reject_request(
+        cls, session, request_to_update, backgroundtasks: BackgroundTasks
+    ):
         request_to_update.request_status = RequestStatus.rejected
         session.add(request_to_update)
         handle_db_transaction(session=session)
-        # TODO: Send rejection mail to user
+        backgroundtasks.add_task(
+            send_mail.rejection_mail,
+            email_to_send_to = request_to_update.user.email,
+            username=request_to_update.user.full_name,
+            device_name=request_to_update.device.name,
+            device_model = request_to_update.device.mac_address,
+            requested_date = request_to_update.expected_return_date
+        )
         return "The device was not alloted"
 
 

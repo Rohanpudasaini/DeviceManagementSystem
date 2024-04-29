@@ -154,3 +154,153 @@ Best regards,
 Device Management Support Team
 
 """
+
+def device_confirmation_html(user_name, device_name, device_model, end_date, start_date):
+    return f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Device Allocation Confirmation</title>
+    <style>
+        body {{
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }}
+        .container {{
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }}
+        .header {{
+            color: #28a745; /* Bootstrap green */
+            margin-bottom: 20px;
+        }}
+        .details {{
+            text-align: left;
+            margin-top: 20px;
+            font-size: 16px;
+        }}
+        .highlight {{
+            color: #007bff; /* Bootstrap blue */
+            font-weight: bold;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="header">Device Allocation Confirmation</h1>
+        <p>Dear <span class="highlight">{user_name}</span>,</p>
+        <p>We are pleased to inform you that your request for the device has been accepted. The details of the device allocation are as follows:</p>
+        <div class="details">
+            <p><strong>Device Name:</strong> <span class="highlight">{device_name}</span></p>
+            <p><strong>Device Model:</strong> <span class="highlight">{device_model}</span></p>
+            <p><strong>Allocation Period:</strong> <span class="highlight">{start_date}</span> to <span class="highlight">{end_date}</span></p>
+        </div>
+        <p>Please ensure to collect the device from the IT department and return it by the end of the allocation period. Should you have any questions or require further assistance, please do not hesitate to contact the IT department.</p>
+        <p>Thank you for using our Device Management System!</p>
+    </div>
+</body>
+</html>
+
+
+"""
+
+
+def device_confirmation_text(user_name, device_name, device_model, end_date, start_date):
+    return f"""
+Dear {user_name},
+
+We are pleased to inform you that your request for the device has been accepted. Below are the details of your device allocation:
+
+- Device Name: {device_name}
+- Device Model: {device_model}
+- Allocation Period: {start_date} to {end_date}
+
+Please ensure to collect the device from the IT department and return it by the end of the allocation period. If you have any questions or need further assistance, please do not hesitate to contact the IT department.
+
+Thank you for using our Device Management System!
+
+Best regards,
+"""
+
+def device_rejection_html(user_name, device_name, device_model, request_date):
+    return f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Device Allocation Rejection</title>
+    <style>
+        body {{
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }}
+        .container {{
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }}
+        .header {{
+            color: #dc3545; /* Bootstrap red */
+            margin-bottom: 20px;
+        }}
+        .details {{
+            text-align: left;
+            margin-top: 20px;
+            font-size: 16px;
+        }}
+        .highlight {{
+            color: #007bff; /* Bootstrap blue */
+            font-weight: bold;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="header">Device Allocation Rejection</h1>
+        <p>Dear <span class="highlight">{user_name}</span>,</p>
+        <p>We regret to inform you that your request for the device has been rejected. The details of your request are as follows:</p>
+        <div class="details">
+            <p><strong>Device Name:</strong> <span class="highlight">{device_name}</span></p>
+            <p><strong>Device Model:</strong> <span class="highlight">{device_model}</span></p>
+            <p><strong>Request Date:</strong> <span class="highlight">{request_date}</span></p>
+        </div>
+        <p>This decision may be due to a number of factors such as limited availability or eligibility requirements not being met. Please contact the IT department if you believe this decision requires further review or to discuss alternative solutions.</p>
+        <p>Thank you for understanding and for using our Device Management System.</p>
+    </div>
+</body>
+</html>
+
+
+"""
+
+
+def device_rejection_text(user_name, device_name, device_model, request_date):
+    return f"""
+Dear {user_name},
+
+We regret to inform you that your request for the device has been rejected. Below are the details of your request:
+
+- Device Name: {device_name}
+- Device Model: {device_model}
+- Request Date: {request_date}
+
+This decision may be due to a number of factors such as limited availability or eligibility requirements not being met. Please contact the IT department if you believe this decision requires further review or to discuss alternative solutions.
+
+Thank you for understanding and for using our Device Management System.
+
+Best regards,
+"""
