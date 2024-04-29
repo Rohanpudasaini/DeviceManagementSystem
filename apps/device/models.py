@@ -104,18 +104,17 @@ class DeviceRequestRecord(Base):
         return False
 
     @classmethod
+    def from_id(cls, session, id):
+        return session.scalar(Select(cls).where(cls.id == id))
+
+    @classmethod
     def allot_to_user(
         cls, session, requested_user, device_to_allot, expected_return_date
     ):
         device_id = device_to_allot.id
-        # logger.info(f"Trying to allot a device with device id {device_id} to user with email {requested_user.email}")
         logger.info(
             f"{requested_user.full_name} is requesting a device with id {device_id}"
         )
-        # device_to_allot.user = requested_user
-        # session.add(device_to_allot)
-        # handle_db_transaction(session)
-        # device_to_allot.available = False
         add_record = cls(
             expected_return_date=expected_return_date,
             device=device_to_allot,
@@ -126,8 +125,10 @@ class DeviceRequestRecord(Base):
         logger.info(
             f"Successfully requested device with id {device_id} to user with email {requested_user.email}"
         )
-        return "successfully requested device, please wait while admin check your request. \
+        return (
+            "successfully requested device, please wait while admin check your request. \
 You will be informed through mail about the result."
+        )
 
     @classmethod
     def return_device(cls, session, returned_user, device_to_return):
@@ -191,9 +192,33 @@ You will be informed through mail about the result."
         return results
 
     @classmethod
-    def accept_request(cls,session, id):
-        # request_to_accept = session.sc
-        ...
+    def accept_request(cls, session, request_to_update):
+        device_requested = request_to_update.device
+        alloted_to = request_to_update.user
+        device_requested.user = alloted_to
+        device_requested.available = False
+        request_to_update.request_status = RequestStatus.accepted
+        session.add_all([device_requested, alloted_to, request_to_update])
+        handle_db_transaction(session=session)
+        # TODO: Send acceptation mail and also rejection mail to other user
+        same_devices_requested = session.scalars(
+            Select(cls).where(
+                cls.device == device_requested,
+                cls.request_status == RequestStatus.pending,
+            )
+        ).all()
+        if same_devices_requested:
+            for remaining_request in same_devices_requested:
+                cls.reject_request(session, remaining_request)
+        return "Device Alloted Successfully"
+
+    @classmethod
+    def reject_request(cls, session, request_to_update):
+        request_to_update.request_status = RequestStatus.rejected
+        session.add(request_to_update)
+        handle_db_transaction(session=session)
+        # TODO: Send rejection mail to user
+        return "The device was not alloted"
 
 
 class Device(Base):
@@ -306,7 +331,6 @@ class Device(Base):
 
     @classmethod
     def get_all(cls, session, page_number, page_size):
-        session = get_session()
         statement = (
             Select(cls)
             .where(cls.available == True, cls.deleted == False)  # noqa: E712
@@ -324,7 +348,6 @@ class Device(Base):
 
     @classmethod
     def search_device(cls, session, name, brand):
-        session = get_session()
         if name and brand:
             devices = session.scalars(
                 Select(cls).filter(

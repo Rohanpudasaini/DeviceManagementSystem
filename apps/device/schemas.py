@@ -23,6 +23,11 @@ class DeviceRequestModel(BaseSchema):
         tz=datetime.UTC
     ) + datetime.timedelta(days=30)
 
+class DeviceReturnModel(BaseSchema):
+    mac_address:str
+
+class DeviceRequestResultModel(BaseSchema):
+    id_of_request:int
 
 class DeviceMaintenanceModel(BaseSchema):
     purpose: Purpose

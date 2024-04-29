@@ -17,7 +17,9 @@ from apps.device.schemas import (
     DeviceAddModel,
     DeviceMaintenanceModel,
     DeviceRequestModel,
+    DeviceRequestResultModel,
     DeviceReturnFromMaintenanceModel,
+    DeviceReturnModel,
     DeviceType,
     DeviceUpdateModel,
 )
@@ -234,6 +236,34 @@ async def request_device(
             expected_return_date=expected_return_date,
         )
     )
+    
+
+@router.post("/accept-request", tags =["Device"],dependencies=[Depends(PermissionChecker("all_access"))])
+async def accept_request(payload:DeviceRequestResultModel, session = Depends(get_session)):
+    result = DeviceRequestRecord.from_id(session,payload.id_of_request)
+    if not result:
+        raise HTTPException(
+            status_code= 404,
+            detail= response_model(
+                message= constants.REQUEST_NOT_FOUND,
+                error = constants.request_not_found("request record", 'id')
+            )
+        )
+    return response_model(DeviceRequestRecord.accept_request(session=session,request_to_update=result))
+
+
+@router.post("/reject-request", tags =["Device"],dependencies=[Depends(PermissionChecker("all_access"))])
+async def reject_request(payload:DeviceRequestResultModel, session = Depends(get_session)):
+    result = DeviceRequestRecord.from_id(session,payload.id_of_request)
+    if not result:
+        raise HTTPException(
+            status_code= 404,
+            detail= response_model(
+                message= constants.REQUEST_NOT_FOUND,
+                error = constants.request_not_found("request record", 'id')
+            )
+        )
+    return response_model(DeviceRequestRecord.reject_request(session=session,request_to_update=result))
 
 
 @router.post(
@@ -242,7 +272,7 @@ async def request_device(
     dependencies=[Depends(PermissionChecker("request_device"))],
 )
 async def return_device(
-    deviceReturnModel: DeviceRequestModel,
+    deviceReturnModel: DeviceReturnModel,
     request: Request,
     token=Depends(auth.validate_token),
     session=Depends(get_session),
