@@ -61,7 +61,6 @@ class MaintenanceHistory(Base):
         if record_to_update:
             for key, values in kwargs.items():
                 setattr(record_to_update, key, values)
-            # returned_device = Device.from_id(device_id)
             user_object = User.from_id(session, record_to_update.user_id)
             returned_device.user = user_object
             returned_device.status = DeviceStatus.ACTIVE
@@ -199,11 +198,12 @@ You will be informed through mail about the result."
                 "category": data.device.type,
             }
             results.append(result)
-            # /return the result and the count
         return results, count
 
     @classmethod
-    def accept_request(cls, session, request_to_update, backgroundtasks:BackgroundTasks):
+    def accept_request(
+        cls, session, request_to_update, backgroundtasks: BackgroundTasks
+    ):
         device_requested = request_to_update.device
         alloted_to = request_to_update.user
         device_requested.user = alloted_to
@@ -211,7 +211,7 @@ You will be informed through mail about the result."
         request_to_update.request_status = RequestStatus.accepted
         session.add_all([device_requested, alloted_to, request_to_update])
         handle_db_transaction(session=session)
-        # TODO: Send acceptation mail and also rejection mail to other user
+
         same_devices_requested = session.scalars(
             Select(cls).where(
                 cls.device == device_requested,
@@ -223,11 +223,11 @@ You will be informed through mail about the result."
                 cls.reject_request(session, remaining_request, backgroundtasks)
         backgroundtasks.add_task(
             send_mail.confirmation_mail,
-            email_to_send_to = request_to_update.user.email,
+            email_to_send_to=request_to_update.user.email,
             username=request_to_update.user.full_name,
             device_name=request_to_update.device.name,
-            device_model = request_to_update.device.mac_address,
-            end_date = request_to_update.borrowed_date
+            device_model=request_to_update.device.mac_address,
+            end_date=request_to_update.borrowed_date,
         )
         return "Device Alloted Successfully"
 
@@ -240,11 +240,11 @@ You will be informed through mail about the result."
         handle_db_transaction(session=session)
         backgroundtasks.add_task(
             send_mail.rejection_mail,
-            email_to_send_to = request_to_update.user.email,
+            email_to_send_to=request_to_update.user.email,
             username=request_to_update.user.full_name,
             device_name=request_to_update.device.name,
-            device_model = request_to_update.device.mac_address,
-            requested_date = request_to_update.expected_return_date
+            device_model=request_to_update.device.mac_address,
+            requested_date=request_to_update.expected_return_date,
         )
         return "The device was not alloted"
 
@@ -271,7 +271,6 @@ class Device(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=True)
     user = relationship("User", back_populates="devices")
     maintenance_record = relationship("MaintenanceHistory", back_populates="devices")
-    # record = relationship('DeviceRequestRecord', back_populates='device')
 
     @classmethod
     def add(cls, session, **kwargs):

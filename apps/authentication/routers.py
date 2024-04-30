@@ -88,8 +88,7 @@ async def reset_password(
         raise HTTPException(
             status_code=400,
             detail=response_model(
-                message= constants.BAD_REQUEST,
-                error= constants.BAD_REQUEST_MESSAGE
+                message=constants.BAD_REQUEST, error=constants.BAD_REQUEST_MESSAGE
             ),
         )
     email = auth.decode_otp_jwt(token)
@@ -122,7 +121,6 @@ async def forget_password(
         username=user_object.full_name,
         password=password,
     )
-    # user_object.
     user_object.temp_password = auth.hash_password(password)
     user_object.temp_password_created_at = datetime.datetime.now(datetime.UTC)
     handle_db_transaction(session)

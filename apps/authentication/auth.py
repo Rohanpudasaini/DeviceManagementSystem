@@ -11,15 +11,17 @@ from core.config import config
 
 contain_header = HTTPBearer(auto_error=False)
 
+
 def generate_jwt(
     email: str,
 ):
     payload = {
         "user_identifier": email,
         "expiry": time.time() + 1200,
-        # 'expiry': time.time() + 240
     }
-    encoded_access = jwt.encode(payload, config.secret_access, algorithm=config.algorithm)
+    encoded_access = jwt.encode(
+        payload, config.secret_access, algorithm=config.algorithm
+    )
     payload = {"user_identifier": email, "expiry": time.time() + 604800}
     encoded_refresh = jwt.encode(payload, config.secret_refresh, config.algorithm)
     return encoded_access, encoded_refresh
@@ -28,7 +30,6 @@ def generate_jwt(
 def decode_access_jwt(token: str):
     try:
         decode_token = jwt.decode(token, config.secret_access, config.algorithm)
-        # return decode_token if decode_token['expiry'] >= time.time() else None
         if decode_token["expiry"] >= time.time():
             return decode_token
         else:
@@ -52,7 +53,6 @@ def decode_access_jwt(token: str):
 def decode_refresh_jwt(token: str):
     try:
         decode_token = jwt.decode(token, config.secret_refresh, config.algorithm)
-        # return decode_token if decode_token['expiry'] >= time.time() else None
         if decode_token["expiry"] >= time.time():
             new_token, _ = generate_jwt(decode_token["user_identifier"])
             return new_token
@@ -67,7 +67,6 @@ def decode_refresh_jwt(token: str):
     except JWTError:
         raise HTTPException(
             status_code=401,
-            # detail=
             detail=response_model(
                 message=constants.TOKEN_ERROR,
                 error=constants.TOKEN_VERIFICATION_FAILED,
@@ -78,7 +77,6 @@ def decode_refresh_jwt(token: str):
 def generate_otp_jwt(email: str):
     payload = {
         "user_identifier": email,
-        # 'expiry': time.time() + 1200
         "expiry": time.time() + 1240,
     }
     encoded_otp = jwt.encode(payload, config.otp_secret, algorithm=config.algorithm)
@@ -87,7 +85,9 @@ def generate_otp_jwt(email: str):
 
 def decode_otp_jwt(token: str):
     try:
-        decode_token = jwt.decode(token=token, key=config.otp_secret, algorithms=config.algorithm)
+        decode_token = jwt.decode(
+            token=token, key=config.otp_secret, algorithms=config.algorithm
+        )
         if decode_token["expiry"] >= time.time():
             return decode_token
         else:
@@ -123,7 +123,7 @@ def verify_password(plain_password: str, hashed_password):
 
 
 def validate_token(
-    token: Annotated[HTTPAuthorizationCredentials, Depends(contain_header)]
+    token: Annotated[HTTPAuthorizationCredentials, Depends(contain_header)],
 ):
     if token:
         return decode_access_jwt(token.credentials)

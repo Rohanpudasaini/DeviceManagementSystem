@@ -170,7 +170,6 @@ async def user_records(
                 )
             ).all()
         },
-        # message="Successful", data=DeviceRequestRecord.user_record(session,user_id)
     )
 
 
