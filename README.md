@@ -30,10 +30,7 @@ This is a robust device management system API crafted using FastAPI for handling
    Set up your environment variables in a `.env` file using the following format:
 
    ```bash
-   HOST=database_host
-   DATABASE=database_name
-   USER=database_username
-   PASSWORD=database_password
+   DATABASE_URL=postgresql://username:password@database_host/database_name
    SECRET_ACCESS=AccessToken_secret_key
    ALGORITHM=Token_algorithm
    SECRET_REFRESH=RefreshToken_secret_key
