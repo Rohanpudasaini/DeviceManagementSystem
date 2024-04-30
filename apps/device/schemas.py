@@ -46,6 +46,6 @@ class DeviceUpdateModel(BaseSchema):
     brand: str | None = None
     price: float | None = None
     description: str | None = None
-    status: DeviceStatus | None = None
+    status: DeviceStatus = DeviceStatus.ACTIVE
     product_images: list[str] | None = None
     specification: list[str] | None = None
