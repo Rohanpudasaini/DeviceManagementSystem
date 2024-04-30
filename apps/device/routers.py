@@ -108,12 +108,16 @@ async def get_all_device(
     )
 
 
-@router.get("/assigned", tags=["Device"])
+@router.get(
+    "/assigned",
+    tags=["Device"],
+    dependencies=[Depends(PermissionChecker("create_device"))],
+)
 async def assigned_device(
     session=Depends(get_session),
 ):
     device = Device.assigned_device(session)
-    return response_model(data={'result':device})
+    return response_model(data={"result": device})
 
 
 @router.post(
@@ -335,7 +339,7 @@ async def request_maintenance(
             status_code=409,
             detail=response_model(
                 message=constants.MAINTENANCE,
-                error= constants.MAINTENANCE_MESSAGE,
+                error=constants.MAINTENANCE_MESSAGE,
             ),
         )
     return response_model(
@@ -420,7 +424,7 @@ async def device_maintenance_history(mac_address: str, session):
     device_object = Device.from_mac_address(session, mac_address)
     device_id = device_object.id
     result = MaintenanceHistory.device_maintenance_history(session, device_id)
-    return response_model(message="Successful", data={'result':result})
+    return response_model(message="Successful", data={"result": result})
 
 
 @router.get(
@@ -435,4 +439,4 @@ async def device_owner_history(
     device_object = Device.from_mac_address(session, mac_address)
     device_id = device_object.id
     result = DeviceRequestRecord.device_owner_history(session, device_id)
-    return response_model(message="Successful", data={"result":result})
+    return response_model(message="Successful", data={"result": result})

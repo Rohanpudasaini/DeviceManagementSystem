@@ -139,7 +139,7 @@ async def delete_user(
             status_code=409,
             detail=response_model(
                 message=constants.CONFLICT,
-                error= constants.DEVICE_ALREADY_IN_USED,
+                error=constants.DEVICE_ALREADY_IN_USED,
             ),
         )
     return response_model(message=User.delete(session, user_to_delete))
@@ -150,7 +150,11 @@ async def my_info(session=Depends(get_session), token=Depends(auth.validate_toke
     return response_model(data=User.from_email(session, token["user_identifier"]))
 
 
-@router.get("/user/record", tags=["User"])
+@router.get(
+    "/user/record",
+    tags=["User"],
+    dependencies=[Depends(PermissionChecker("all_access"))],
+)
 async def user_records(
     email,
     session=Depends(get_session),
@@ -159,10 +163,13 @@ async def user_records(
     user_id = user_object.id
     return response_model(
         message="Successful",
-        data={"result":session.scalars(
-            Select(DeviceRequestRecord).where(DeviceRequestRecord.user_id == user_id)
-        ).all()},
-        # message="Successful", data=DeviceRequestRecord.user_record(session,user_id)
+        data={
+            "result": session.scalars(
+                Select(DeviceRequestRecord).where(
+                    DeviceRequestRecord.user_id == user_id
+                )
+            ).all()
+        },
     )
 
 
@@ -180,7 +187,7 @@ async def current_device(
                 error=f"No device is associated with the {user.full_name}",
             ),
         )
-    return response_model(data={'result':current_device})
+    return response_model(data={"result": current_device})
 
 
 @router.get(
@@ -196,7 +203,7 @@ async def current_device_by_user_id(id: int, session=Depends(get_session)):
             status_code=404,
             detail=response_model(
                 message=constants.REQUEST_NOT_FOUND,
-                error= constants.no_device_associated(user.full_name),
+                error=constants.no_device_associated(user.full_name),
             ),
         )
-    return response_model(data={'result':current_devices})
+    return response_model(data={"result": current_devices})

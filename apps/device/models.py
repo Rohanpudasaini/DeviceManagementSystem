@@ -61,7 +61,6 @@ class MaintenanceHistory(Base):
         if record_to_update:
             for key, values in kwargs.items():
                 setattr(record_to_update, key, values)
-            # returned_device = Device.from_id(device_id)
             user_object = User.from_id(session, record_to_update.user_id)
             returned_device.user = user_object
             returned_device.status = DeviceStatus.ACTIVE
@@ -199,7 +198,6 @@ You will be informed through mail about the result."
                 "category": data.device.type,
             }
             results.append(result)
-            # /return the result and the count
         return results, count
 
     @classmethod
@@ -213,7 +211,7 @@ You will be informed through mail about the result."
         request_to_update.request_status = RequestStatus.accepted
         session.add_all([device_requested, alloted_to, request_to_update])
         handle_db_transaction(session=session)
-        # TODO: Send acceptation mail and also rejection mail to other user
+
         same_devices_requested = session.scalars(
             Select(cls).where(
                 cls.device == device_requested,
@@ -273,7 +271,6 @@ class Device(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=True)
     user = relationship("User", back_populates="devices")
     maintenance_record = relationship("MaintenanceHistory", back_populates="devices")
-    # record = relationship('DeviceRequestRecord', back_populates='device')
 
     @classmethod
     def add(cls, session, **kwargs):
