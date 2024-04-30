@@ -1,6 +1,6 @@
 from fastapi import HTTPException
 from sqlalchemy import DateTime, ForeignKey, Integer, Select, func
-from sqlalchemy.orm import mapped_column, Mapped, relationship
+from sqlalchemy.orm import mapped_column, Mapped, relationship, defer
 from sqlalchemy.ext.hybrid import hybrid_property
 from core.utils import (
     generate_password,
@@ -19,9 +19,9 @@ class User(Base):
     __tablename__ = "user"
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     email: Mapped[str] = mapped_column(unique=True, nullable=False)
-    password: Mapped[str] = mapped_column(nullable=False, deferred=True)
-    temp_password: Mapped[str] = mapped_column(nullable=True, deferred=True)
-    temp_password_created_at = mapped_column(DateTime, nullable=True, deferred=True)
+    password: Mapped[str] = mapped_column(nullable=False)
+    temp_password: Mapped[str] = mapped_column(nullable=True)
+    temp_password_created_at = mapped_column(DateTime, nullable=True)
     first_name: Mapped[str]
     last_name: Mapped[str]
     phone_no: Mapped[str]
@@ -34,12 +34,12 @@ class User(Base):
     )
     allow_notification: Mapped[bool] = mapped_column(default=True)
     designation: Mapped[Designation] = mapped_column(nullable=True)
-    deleted: Mapped[bool] = mapped_column(default=False, deferred=True)
-    deleted_at = mapped_column(DateTime, nullable=True, deferred=True)
+    deleted: Mapped[bool] = mapped_column(default=False)
+    deleted_at = mapped_column(DateTime, nullable=True)
     role_id = relationship(
         "Role", back_populates="user_id", secondary="users_roles", lazy="dynamic"
     )
-    default_password: Mapped[bool] = mapped_column(default=True, deferred=True)
+    default_password: Mapped[bool] = mapped_column(default=True)
     devices = relationship("Device", back_populates="user")
 
     @hybrid_property
@@ -72,7 +72,6 @@ class User(Base):
                 message="User added successfully, Please find your temporary password in mail"
             ),
         )
-
 
     @classmethod
     def change_password(cls, session, user_to_update, new_password):
@@ -122,6 +121,15 @@ class User(Base):
         statement = (
             Select(cls)
             .where(cls.deleted == False)  # noqa: E712
+            .options(
+                defer(cls.password),
+                defer(cls.temp_password),
+                defer(cls.temp_password_created_at),
+                defer(cls.default_password),
+                defer(cls.deleted),
+                defer(cls.deleted_at),
+                defer(cls.default_password),
+            )
             .order_by(cls.id.asc())
             .offset(((page_number - 1) * page_size))
             .limit(page_size)
@@ -133,7 +141,18 @@ class User(Base):
 
     @classmethod
     def from_id(cls, session, id):
-        result = session.scalar(Select(cls).where(cls.id == id, cls.deleted == False))  # noqa: E712
+        result = session.scalar(Select(cls).where(cls.id == id, cls.deleted == False)  # noqa: E712
+        .options(
+                defer(cls.password),
+                defer(cls.temp_password),
+                defer(cls.temp_password_created_at),
+                defer(cls.default_password),
+                defer(cls.deleted),
+                defer(cls.deleted_at),
+                defer(cls.default_password),
+            ))
+        
+        
         if not result:
             raise HTTPException(
                 status_code=404,
@@ -145,9 +164,18 @@ class User(Base):
         return result
 
     @classmethod
-    def from_email(cls, session, email, check= False):
+    def from_email(cls, session, email, check=False):
         result = session.scalar(
-            Select(cls).where(cls.email == email, cls.deleted == False)  # noqa: E712
+            Select(cls).where(cls.email == email, cls.deleted == False) # noqa: E712
+            .options(
+                defer(cls.password),
+                defer(cls.temp_password),
+                defer(cls.temp_password_created_at),
+                defer(cls.default_password),
+                defer(cls.deleted),
+                defer(cls.deleted_at),
+                defer(cls.default_password),
+            )
         )
         if not result:
             if check:
@@ -207,7 +235,7 @@ class User(Base):
                     status_code=401,
                     detail=response_model(
                         message=constants.UNAUTHORIZED,
-                        error= constants.TEMP_PASSWORD_ALREADY_USED,
+                        error=constants.TEMP_PASSWORD_ALREADY_USED,
                     ),
                 )
         raise HTTPException(

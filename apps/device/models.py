@@ -1,6 +1,6 @@
 from fastapi import BackgroundTasks, HTTPException
 from sqlalchemy import DateTime, ForeignKey, ARRAY, String, Select, func
-from sqlalchemy.orm import mapped_column, Mapped, relationship
+from sqlalchemy.orm import mapped_column, Mapped, relationship, defer
 from sqlalchemy.ext.hybrid import hybrid_property
 from apps.device.enum import RequestStatus
 from apps.user.models import User
@@ -265,8 +265,8 @@ class Device(Base):
         DateTime, default=datetime.datetime.now(tz=datetime.UTC)
     )
     type: Mapped[DeviceType]
-    deleted: Mapped[bool] = mapped_column(default=False, deferred=True)
-    deleted_at = mapped_column(DateTime, nullable=True, deferred=True)
+    deleted: Mapped[bool] = mapped_column(default=False)
+    deleted_at = mapped_column(DateTime, nullable=True)
     specification = mapped_column(ARRAY(String))
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=True)
     user = relationship("User", back_populates="devices")
@@ -311,7 +311,14 @@ class Device(Base):
 
     @classmethod
     def from_id(cls, session, id):
-        result = session.scalar(Select(cls).where(cls.id == id, cls.deleted == False))  # noqa: E712
+        result = session.scalar(
+            Select(cls)
+            .where(cls.id == id, cls.deleted == False)  # noqa: E712
+            .options(
+                defer(cls.deleted),
+                defer(cls.deleted_at),
+            )
+        )
         if not result:
             raise HTTPException(
                 status_code=404,
@@ -327,6 +334,10 @@ class Device(Base):
         result = session.scalars(
             Select(cls)
             .where(cls.deleted == False, cls.type == category_name.upper())  # noqa: E712
+            .options(
+                defer(cls.deleted),
+                defer(cls.deleted_at),
+            )
             .order_by(cls.id.asc())
         ).all()
         if not result:
@@ -342,7 +353,12 @@ class Device(Base):
     @classmethod
     def from_mac_address(cls, session, mac_address, check=False):
         result = session.scalar(
-            Select(cls).where(cls.mac_address == mac_address, cls.deleted == False)  # noqa: E712
+            Select(cls)
+            .where(cls.mac_address == mac_address, cls.deleted == False)  # noqa: E712
+            .options(
+                defer(cls.deleted),
+                defer(cls.deleted_at),
+            )
         )
         if not result:
             if check:
@@ -361,6 +377,10 @@ class Device(Base):
         statement = (
             Select(cls)
             .where(cls.available == True, cls.deleted == False)  # noqa: E712
+            .options(
+                defer(cls.deleted),
+                defer(cls.deleted_at),
+            )
             .order_by(cls.id.asc())
             .offset(((page_number - 1) * page_size))
             .limit(page_size)
@@ -377,20 +397,37 @@ class Device(Base):
     def search_device(cls, session, name, brand):
         if name and brand:
             devices = session.scalars(
-                Select(cls).filter(
+                Select(cls)
+                .filter(
                     cls.deleted == False,  # noqa: E712
                     cls.name.icontains(name),
                     cls.brand.icontains(brand),
+                )
+                .options(
+                    defer(cls.deleted),
+                    defer(cls.deleted_at),
                 )
             ).all()
             return devices
         if name:
             devices = session.scalars(
-                Select(cls).filter(cls.deleted == False, cls.name.icontains(name))  # noqa: E712
-            ).all()
+                Select(cls).filter(
+                    cls.deleted == False, # noqa: E712
+                    cls.name.icontains(name))
+                .options(
+                        defer(cls.deleted),
+                        defer(cls.deleted_at),
+                    ),
+                ).all()
             return devices
         elif brand:
             devices = session.scalars(
-                Select(cls).filter(cls.deleted == False, cls.brand.icontains(brand))  # noqa: E712
+                Select(cls).filter(
+                    cls.deleted == False, # noqa: E712
+                    cls.brand.icontains(brand).options(  
+                        defer(cls.deleted),
+                        defer(cls.deleted_at),
+                    ),
+                )
             ).all()
             return devices
