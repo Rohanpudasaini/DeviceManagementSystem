@@ -19,10 +19,10 @@ This is a robust device management system API crafted using FastAPI for handling
    git clone https://github.com/Rohanpudasaini/DeviceManagementSystem.git
    ```
 
-   This will create a directory named `device_management_system_fastAPI`. Next, change into this directory:
+   This will create a directory named `DeviceManagementSystem`. Next, change into this directory:
 
    ```bash
-   cd device_management_system_fastAPI
+   cd DeviceManagementSystem
    ```
 
 2. Create a `.env` file
