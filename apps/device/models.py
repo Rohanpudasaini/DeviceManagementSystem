@@ -292,10 +292,19 @@ class Device(Base):
         return "Device Added Successfully"
 
     @classmethod
-    def assigned_device(cls, session):
-        assigned_device = session.scalars(Select(cls).where(cls.user_id != None)).all()  # noqa: E711
-        if assigned_device:
-            return assigned_device
+    def assigned_device(cls, session, page_number, page_size):
+        result = session.scalars(
+            Select(cls)
+            .where(cls.user_id != None)  # noqa: E711
+            .order_by(cls.id.asc())
+            .offset(((page_number - 1) * page_size))
+            .limit(page_size)
+        )
+
+        count = session.scalar(
+            Select(func.count()).select_from(cls).where(cls.user_id != None)  # noqa: E711
+        )
+        return result, count
 
     @classmethod
     def update(cls, session, device_to_update, **kwargs):
