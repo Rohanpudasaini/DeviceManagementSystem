@@ -299,7 +299,7 @@ class Device(Base):
             .order_by(cls.id.asc())
             .offset(((page_number - 1) * page_size))
             .limit(page_size)
-        )
+        ).all()
 
         count = session.scalar(
             Select(func.count()).select_from(cls).where(cls.user_id != None)  # noqa: E711
