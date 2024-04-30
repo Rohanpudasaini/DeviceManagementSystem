@@ -9,7 +9,6 @@ Device Management API helps you maintain your devices and their users. 🚀
 
 """
 
-
 app = FastAPI(
     title="DeviceManagementSystem",
     description=description,
