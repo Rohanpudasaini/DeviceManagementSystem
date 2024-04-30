@@ -115,9 +115,45 @@ async def get_all_device(
 )
 async def assigned_device(
     session=Depends(get_session),
+    page_number: int | None = 1,
+    page_size: int | None = 20,
 ):
-    device = Device.assigned_device(session)
-    return response_model(data={"result": device})
+    if page_number < 1:
+        page_number = 1
+
+    device, count = Device.assigned_device(
+        session, page_number=page_number, page_size=page_size
+    )
+    final_page = ceil(count / page_size)
+    next_page, previous_page = None, None
+
+    if page_size * page_number < count:
+        next_page = (
+            f"/api/v1/assigned?page_number={page_number+1}&page_size={page_size}"
+        )
+    if page_number > 1:
+        if page_number > final_page:
+            previous_page = (
+                f"/api/v1/assigned?page_number={final_page}&page_size={page_size}"
+            )
+        else:
+            previous_page = (
+                f"/api/v1/assigned?page_number={page_number-1}&page_size={page_size}"
+            )
+
+    return response_model(
+        data={
+            "pagination": {
+                "total": count,
+                "page_number": page_number,
+                "page_Size": page_size,
+                "next_page": next_page,
+                "previous_page": previous_page,
+                "final_page": final_page,
+            },
+            "result": device,
+        }
+    )
 
 
 @router.post(
