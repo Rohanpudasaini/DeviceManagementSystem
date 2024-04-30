@@ -295,14 +295,14 @@ class Device(Base):
     def assigned_device(cls, session, page_number, page_size):
         result = session.scalars(
             Select(cls)
-            .where(cls.user_id != None)  # noqa: E712
+            .where(cls.user_id != None)  # noqa: E711
             .order_by(cls.id.asc())
             .offset(((page_number - 1) * page_size))
             .limit(page_size)
         )
 
         count = session.scalar(
-            Select(func.count()).select_from(cls).where(cls.user_id != None)  # noqa: E712
+            Select(func.count()).select_from(cls).where(cls.user_id != None)  # noqa: E711
         )
         return result, count
 
