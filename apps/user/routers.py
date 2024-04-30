@@ -23,11 +23,11 @@ from apps.user.schemas import (
 
 from fastapi import APIRouter
 
-router = APIRouter(prefix="")
+router = APIRouter(prefix="/user")
 
 
 @router.get(
-    "/user", tags=["User"], dependencies=[Depends(PermissionChecker("view_user"))]
+    "", tags=["User"], dependencies=[Depends(PermissionChecker("view_user"))]
 )
 async def get_all_users(
     request: Request,
@@ -74,7 +74,7 @@ async def get_all_users(
 
 
 @router.post(
-    "/user",
+    "",
     status_code=201,
     tags=["User"],
     dependencies=[Depends(PermissionChecker("create_user"))],
@@ -105,7 +105,7 @@ async def add_user(
 
 
 @router.patch(
-    "/user/{email}",
+    "/{email}",
     tags=["User"],
     dependencies=[Depends(PermissionChecker("update_user"))],
 )
@@ -125,7 +125,7 @@ async def update_user(
 
 
 @router.delete(
-    "/user", tags=["User"], dependencies=[Depends(PermissionChecker("delete_user"))]
+    "", tags=["User"], dependencies=[Depends(PermissionChecker("delete_user"))]
 )
 async def delete_user(
     data: DeleteModel,
@@ -145,15 +145,15 @@ async def delete_user(
     return response_model(message=User.delete(session, user_to_delete))
 
 
-@router.get("/user/me", tags=["User"])
+@router.get("/me", tags=["User"])
 async def my_info(session=Depends(get_session), token=Depends(auth.validate_token)):
     return response_model(data=User.from_email(session, token["user_identifier"]))
 
 
 @router.get(
-    "/user/record",
-    tags=["User"],
-    dependencies=[Depends(PermissionChecker("all_access"))],
+    "/record",
+    tags=["User","Admin_Only"],
+    dependencies=[Depends(PermissionChecker("admin_access"))],
 )
 async def user_records(
     email,
@@ -173,7 +173,7 @@ async def user_records(
     )
 
 
-@router.get("/user/current-device", tags=["User"])
+@router.get("/current-device", tags=["User"])
 async def current_device(
     token: str = Depends(auth.validate_token), session=Depends(get_session)
 ):
@@ -191,9 +191,9 @@ async def current_device(
 
 
 @router.get(
-    "/user/{id}/current-device",
-    tags=["User"],
-    dependencies=[Depends(PermissionChecker("all_access"))],
+    "/{id}/current-device",
+    tags=["User","Admin_Only"],
+    dependencies=[Depends(PermissionChecker("admin_access"))],
 )
 async def current_device_by_user_id(id: int, session=Depends(get_session)):
     user = User.from_id(session, id)

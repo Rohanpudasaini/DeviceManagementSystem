@@ -280,8 +280,8 @@ async def request_device(
 
 @router.post(
     "/accept-request",
-    tags=["Device"],
-    dependencies=[Depends(PermissionChecker("all_access"))],
+    tags=["Device","Admin_Only"],
+    dependencies=[Depends(PermissionChecker("admin_access"))],
 )
 async def accept_request(
     data: DeviceRequestResultModel,
@@ -306,8 +306,8 @@ async def accept_request(
 
 @router.post(
     "/reject-request",
-    tags=["Device"],
-    dependencies=[Depends(PermissionChecker("all_access"))],
+    tags=["Device","Admin_Only"],
+    dependencies=[Depends(PermissionChecker("admin_access"))],
 )
 async def reject_request(
     data: DeviceRequestResultModel,
@@ -409,7 +409,7 @@ async def return_maintenance(
 
 
 @router.get(
-    "/pending", tags=["Device"], dependencies=[Depends(PermissionChecker("all_access"))]
+    "/pending", tags=["Device","Admin_Only"], dependencies=[Depends(PermissionChecker("admin_access"))]
 )
 async def pending_request(
     session=Depends(get_session),

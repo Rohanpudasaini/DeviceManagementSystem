@@ -293,8 +293,9 @@ class Device(Base):
 
     @classmethod
     def assigned_device(cls, session, page_number, page_size):
-        result = session.scalars(
-            Select(cls)
+        result = session.execute(
+            Select(cls, User.first_name, User.last_name)
+            .join(User, cls.user_id == User.id)
             .where(cls.user_id != None)  # noqa: E711
             .order_by(cls.id.asc())
             .offset(((page_number - 1) * page_size))
@@ -304,7 +305,11 @@ class Device(Base):
         count = session.scalar(
             Select(func.count()).select_from(cls).where(cls.user_id != None)  # noqa: E711
         )
-        return result, count
+        formatted_result = [
+        {"device_info": device, "user_full_name": f"{user_firstname} {user_lastname}" }
+        for device, user_firstname, user_lastname in result
+    ]
+        return formatted_result, count
 
     @classmethod
     def update(cls, session, device_to_update, **kwargs):
