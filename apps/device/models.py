@@ -112,6 +112,17 @@ class DeviceRequestRecord(Base):
         cls, session, requested_user, device_to_allot, expected_return_date
     ):
         device_id = device_to_allot.id
+        already_requested = session.scalar(
+            Select(cls).where(cls.user == requested_user, cls.device == device_to_allot, cls.request_status==RequestStatus.pending)
+        )
+        if already_requested:
+            raise HTTPException(
+                status_code= 409,
+                detail=response_model(
+                    message = constants.CONFLICT,
+                    error = constants.DUPLICATE_REQUEST
+                )
+            )
         logger.info(
             f"{requested_user.full_name} is requesting a device with id {device_id}"
         )
@@ -411,20 +422,22 @@ class Device(Base):
             return devices
         if name:
             devices = session.scalars(
-                Select(cls).filter(
-                    cls.deleted == False, # noqa: E712
-                    cls.name.icontains(name))
+                Select(cls)
+                .filter(
+                    cls.deleted == False,  # noqa: E712
+                    cls.name.icontains(name),
+                )
                 .options(
-                        defer(cls.deleted),
-                        defer(cls.deleted_at),
-                    ),
-                ).all()
+                    defer(cls.deleted),
+                    defer(cls.deleted_at),
+                ),
+            ).all()
             return devices
         elif brand:
             devices = session.scalars(
                 Select(cls).filter(
-                    cls.deleted == False, # noqa: E712
-                    cls.brand.icontains(brand).options(  
+                    cls.deleted == False,  # noqa: E712
+                    cls.brand.icontains(brand).options(
                         defer(cls.deleted),
                         defer(cls.deleted_at),
                     ),

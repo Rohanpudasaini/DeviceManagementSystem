@@ -27,7 +27,7 @@ SAME_PASSWORD_MESSAGE = "New password same as old password"
 MAINTENANCE = "Device In Maintenance"
 MAINTENANCE_MESSAGE = "The device you have request for is in maintenance"
 TEMP_PASSWORD_ALREADY_USED = "The temp password is already expired, please request for another one. !"
-
+DUPLICATE_REQUEST = "The request you are making is already present in our end, please wait for the mail from our admin stating the request result."
 
 def internal_error(error_message):
     return f"An unexpected error occurred. Please reach out to us with this message: {error_message}"
