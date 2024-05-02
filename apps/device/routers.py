@@ -456,7 +456,7 @@ async def pending_request(
     tags=["Device"],
     dependencies=[Depends(PermissionChecker("view_device"))],
 )
-async def device_maintenance_history(mac_address: str, session):
+async def device_maintenance_history(mac_address: str, session=Depends(get_session)):
     device_object = Device.from_mac_address(session, mac_address)
     device_id = device_object.id
     result = MaintenanceHistory.device_maintenance_history(session, device_id)
