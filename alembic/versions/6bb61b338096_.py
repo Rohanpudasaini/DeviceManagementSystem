@@ -1,8 +1,8 @@
-"""sharing data
+"""empty message
 
-Revision ID: 54cc867f79ff
+Revision ID: 6bb61b338096
 Revises: 
-Create Date: 2024-04-23 11:31:10.876515
+Create Date: 2024-06-05 11:21:09.727975
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '54cc867f79ff'
+revision: str = '6bb61b338096'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -99,6 +99,7 @@ def upgrade() -> None:
     sa.Column('expected_return_date', sa.DateTime(), nullable=True),
     sa.Column('device_id', sa.Integer(), nullable=True),
     sa.Column('user_id', sa.Integer(), nullable=True),
+    sa.Column('request_status', sa.Enum('pending', 'accepted', 'rejected', name='requeststatus'), server_default='pending', nullable=False),
     sa.ForeignKeyConstraint(['device_id'], ['device.id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['user.id'], ),
     sa.PrimaryKeyConstraint('id')
