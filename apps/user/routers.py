@@ -153,7 +153,7 @@ async def my_info(session=Depends(get_session), token=Depends(auth.validate_toke
 @router.get(
     "/record",
     tags=["User","Admin_Only"],
-    dependencies=[Depends(PermissionChecker("admin_access"))],
+    dependencies=[Depends(PermissionChecker("create_user"))],
 )
 async def user_records(
     email,
@@ -193,7 +193,7 @@ async def current_device(
 @router.get(
     "/{id}/current-device",
     tags=["User","Admin_Only"],
-    dependencies=[Depends(PermissionChecker("admin_access"))],
+    dependencies=[Depends(PermissionChecker("create_user"))],
 )
 async def current_device_by_user_id(id: int, session=Depends(get_session)):
     user = User.from_id(session, id)
