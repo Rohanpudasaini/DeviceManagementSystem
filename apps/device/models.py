@@ -105,7 +105,7 @@ class DeviceRequestRecord(Base):
 
     @classmethod
     def from_id(cls, session, id):
-        return session.scalar(Select(cls).where(cls.id == id))
+        return session.scalar(Select(cls).where(cls.id == id, cls.request_status == 'pending'))
 
     @classmethod
     def allot_to_user(
